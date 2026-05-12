@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Setup Firestore — ControlVentas</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f4f6f8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 36px 40px;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+    }
+    h1 { font-size: 20px; color: #1a1a1a; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: #888; margin-bottom: 28px; }
+    .colecciones { margin-bottom: 24px; }
+    .coleccion {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      background: #f8f9fa;
+      font-size: 14px;
+      font-weight: 500;
+      color: #444;
+    }
+    .coleccion .dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .coleccion .status {
+      margin-left: auto;
+      font-size: 12px;
+      font-weight: 400;
+      color: #aaa;
+    }
+    .coleccion.ok .status { color: #27AE60; font-weight: 600; }
+    .coleccion.error .status { color: #e74c3c; font-weight: 600; }
+    .coleccion.loading .status { color: #888; }
+    button {
+      width: 100%;
+      padding: 13px;
+      background: #C0392B;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: #a93226; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    #resultado {
+      margin-top: 20px;
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      display: none;
+    }
+    #resultado.ok { background: #eafaf1; color: #1e8449; border: 1px solid #a9dfbf; }
+    #resultado.error { background: #fdedec; color: #922b21; border: 1px solid #f5b7b1; }
+    .warning {
+      background: #fffbf0;
+      border: 1px solid #f0c040;
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 12px;
+      color: #7d6000;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>Inicializar Firestore</h1>
+  <p class="subtitle">Crea las 5 colecciones base del proyecto ControlVentas</p>
+
+  <div class="warning">
+    ⚠️ Ejecutar solo una vez. Este script crea un documento inicial en cada colección
+    y lo elimina al finalizar, dejando la estructura lista para usar.
+  </div>
+
+  <div class="colecciones">
+    <div class="coleccion" id="col-clientes">
+      <span class="dot" style="background:#C0392B"></span> clientes
+      <span class="status">pendiente</span>
+    </div>
+    <div class="coleccion" id="col-ventas">
+      <span class="dot" style="background:#4A90D9"></span> ventas
+      <span class="status">pendiente</span>
+    </div>
+    <div class="coleccion" id="col-pagos">
+      <span class="dot" style="background:#27AE60"></span> pagos
+      <span class="status">pendiente</span>
+    </div>
+    <div class="coleccion" id="col-compras">
+      <span class="dot" style="background:#E67E22"></span> compras
+      <span class="status">pendiente</span>
+    </div>
+    <div class="coleccion" id="col-egresos">
+      <span class="dot" style="background:#8E44AD"></span> egresos
+      <span class="status">pendiente</span>
+    </div>
+  </div>
+
+  <button id="btnInit" onclick="inicializar()">Inicializar colecciones</button>
+  <div id="resultado"></div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+  import {
+    getFirestore,
+    collection,
+    addDoc,
+    deleteDoc,
+    doc,
+    Timestamp
+  } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBOB3EZQQ8jKOyieOqt5_EebUn8ITknAfY",
+    authDomain: "helio-produce.firebaseapp.com",
+    projectId: "helio-produce",
+    storageBucket: "helio-produce.firebasestorage.app",
+    messagingSenderId: "217860282947",
+    appId: "1:217860282947:web:de5d1c000d2ff0c8efd2f6"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app, 'andyslapry');
+
+  const ahora = Timestamp.now();
+
+  // Documentos de inicialización — se crean y borran para establecer la colección
+  const estructuras = {
+    clientes: {
+      nombre: "__INIT__",
+      identificacion: "",
+      telefono: "",
+      email: "",
+      direccion: "",
+      saldoPendiente: 0
+    },
+    ventas: {
+      clienteId: "__INIT__",
+      clienteNombre: "__INIT__",
+      descripcion: "",
+      fecha: ahora,
+      monto: 0,
+      estado: "pendiente"
+    },
+    pagos: {
+      clienteId: "__INIT__",
+      clienteNombre: "__INIT__",
+      monto: 0,
+      fecha: ahora,
+      observacion: ""
+    },
+    compras: {
+      fecha: ahora,
+      monto: 0,
+      observacion: "",
+      proveedor: ""
+    },
+    egresos: {
+      fecha: ahora,
+      monto: 0,
+      descripcion: "",
+      categoria: ""
+    }
+  };
+
+  function setEstado(id, estado, texto) {
+    const el = document.getElementById(`col-${id}`);
+    el.className = `coleccion ${estado}`;
+    el.querySelector('.status').textContent = texto;
+  }
+
+  window.inicializar = async function () {
+    const btn = document.getElementById('btnInit');
+    const resultado = document.getElementById('resultado');
+    btn.disabled = true;
+    btn.textContent = 'Inicializando...';
+    resultado.style.display = 'none';
+
+    let errores = 0;
+
+    for (const [nombre, datos] of Object.entries(estructuras)) {
+      setEstado(nombre, 'loading', 'creando...');
+      try {
+        const ref = await addDoc(collection(db, nombre), datos);
+        setEstado(nombre, 'loading', 'limpiando...');
+        await deleteDoc(doc(db, nombre, ref.id));
+        setEstado(nombre, 'ok', '✓ lista');
+      } catch (e) {
+        setEstado(nombre, 'error', '✗ error');
+        console.error(`Error en ${nombre}:`, e);
+        errores++;
+      }
+    }
+
+    resultado.style.display = 'block';
+    if (errores === 0) {
+      resultado.className = 'ok';
+      resultado.textContent = '✓ Las 5 colecciones fueron inicializadas correctamente en Firestore. Podés cerrar esta página.';
+      btn.textContent = 'Completado';
+    } else {
+      resultado.className = 'error';
+      resultado.textContent = `Se produjeron ${errores} errores. Revisá la consola del navegador para más detalles.`;
+      btn.disabled = false;
+      btn.textContent = 'Reintentar';
+    }
+  };
+</script>
+</body>
+</html>

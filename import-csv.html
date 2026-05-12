@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Importar CSV — ControlVentas</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f4f6f8;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 28px;
+      max-width: 600px;
+      margin: 0 auto 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.07);
+    }
+    h1 { font-size: 20px; color: #1a1a1a; margin-bottom: 4px; }
+    .sub { font-size: 13px; color: #888; margin-bottom: 24px; }
+
+    /* Upload zone */
+    .upload-zone {
+      border: 2px dashed #d0d5dd;
+      border-radius: 10px;
+      padding: 32px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      margin-bottom: 20px;
+    }
+    .upload-zone:hover, .upload-zone.drag { border-color: #C0392B; background: #fff5f5; }
+    .upload-zone .icon { font-size: 32px; margin-bottom: 8px; }
+    .upload-zone p { font-size: 14px; color: #555; }
+    .upload-zone span { font-size: 12px; color: #aaa; }
+    #fileInput { display: none; }
+
+    /* Resumen */
+    .resumen {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .resumen-titulo { font-size: 13px; font-weight: 700; color: #444; margin-bottom: 10px; }
+    .stats { display: flex; gap: 16px; flex-wrap: wrap; }
+    .stat {
+      flex: 1; min-width: 120px;
+      background: #fff;
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+      border: 1px solid #e5e7eb;
+    }
+    .stat-num { font-size: 24px; font-weight: 800; color: #C0392B; }
+    .stat-lbl { font-size: 11px; color: #888; margin-top: 2px; }
+
+    /* Tabla preview */
+    .preview-wrap {
+      max-height: 220px;
+      overflow-y: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th {
+      background: #f4f6f8;
+      padding: 8px 10px;
+      text-align: left;
+      font-weight: 700;
+      color: #444;
+      position: sticky; top: 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    td { padding: 7px 10px; border-bottom: 1px solid #f0f0f0; color: #333; }
+    tr:last-child td { border-bottom: none; }
+    td.num { text-align: right; font-weight: 600; }
+    td.ventas-count { color: #4A90D9; }
+    td.saldo { color: #C0392B; font-weight: 700; }
+    td.zero { color: #aaa; }
+
+    /* Botones */
+    .btn {
+      width: 100%; padding: 13px;
+      border: none; border-radius: 8px;
+      font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: opacity .15s;
+    }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-primary { background: #C0392B; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #922B21; }
+    .btn-sec {
+      background: #f4f6f8; color: #444;
+      border: 1px solid #e5e7eb;
+      margin-bottom: 10px;
+    }
+
+    /* Progreso */
+    .progreso-wrap { display: none; margin-bottom: 20px; }
+    .progreso-label {
+      font-size: 13px; color: #555;
+      margin-bottom: 8px;
+      display: flex; justify-content: space-between;
+    }
+    .barra-bg {
+      background: #e5e7eb; border-radius: 20px; height: 10px; overflow: hidden;
+    }
+    .barra { background: #C0392B; height: 100%; border-radius: 20px; width: 0; transition: width .2s; }
+    .progreso-detalle { font-size: 11px; color: #aaa; margin-top: 6px; }
+
+    /* Resultado */
+    .resultado {
+      padding: 14px; border-radius: 8px;
+      font-size: 13px; display: none; margin-bottom: 0;
+    }
+    .resultado.ok  { background: #eafaf1; color: #1e8449; border: 1px solid #a9dfbf; }
+    .resultado.err { background: #fdedec; color: #922b21; border: 1px solid #f5b7b1; }
+
+    /* Warning */
+    .warning {
+      background: #fffbf0; border: 1px solid #f0c040;
+      border-radius: 8px; padding: 12px 14px;
+      font-size: 12px; color: #7d6000;
+      margin-bottom: 20px; line-height: 1.6;
+    }
+
+    /* Log errores */
+    .errores-lista {
+      max-height: 120px; overflow-y: auto;
+      background: #fff5f5; border: 1px solid #fbb;
+      border-radius: 8px; padding: 10px;
+      font-size: 11px; color: #c0392b;
+      margin-top: 10px; display: none;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h1>Importar desde CSV</h1>
+  <p class="sub">Importación de clientes y ventas desde Google Sheets</p>
+
+  <div class="warning">
+    ⚠️ <strong>Uso único.</strong> Este importador crea los clientes y ventas de la planilla.
+    Ejecutá solo si la base de datos está vacía para evitar duplicados.
+    La columna AG (total) se omite automáticamente.
+  </div>
+
+  <!-- Upload -->
+  <div class="upload-zone" id="uploadZone" onclick="$('fileInput').click()"
+       ondragover="ev(event,'drag')" ondragleave="ev(event,'')" ondrop="drop(event)">
+    <div class="icon">📄</div>
+    <p>Hacé clic o arrastrá el archivo CSV aquí</p>
+    <span>Archivo exportado desde Google Sheets</span>
+  </div>
+  <input type="file" id="fileInput" accept=".csv" onchange="leerArchivo(this)">
+
+  <!-- Resumen -->
+  <div class="resumen" id="resumen">
+    <div class="resumen-titulo">Vista previa de importación</div>
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-num" id="statClientes">0</div>
+        <div class="stat-lbl">Clientes</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num" id="statVentas">0</div>
+        <div class="stat-lbl">Ventas (+)</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num" id="statPagos" style="color:#27AE60">0</div>
+        <div class="stat-lbl">Pagos (−)</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num" id="statOmitidos">0</div>
+        <div class="stat-lbl">Sin movimientos</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabla preview -->
+  <div class="preview-wrap" id="previewWrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Cliente</th>
+          <th>Ventas (+)</th>
+          <th>Pagos (−)</th>
+          <th>Saldo</th>
+        </tr>
+      </thead>
+      <tbody id="previewBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Progreso -->
+  <div class="progreso-wrap" id="progresoWrap">
+    <div class="progreso-label">
+      <span id="progresoTxt">Importando...</span>
+      <span id="progresoPct">0%</span>
+    </div>
+    <div class="barra-bg"><div class="barra" id="barra"></div></div>
+    <div class="progreso-detalle" id="progresoDetalle"></div>
+  </div>
+
+  <!-- Resultado -->
+  <div class="resultado" id="resultado"></div>
+  <div class="errores-lista" id="erroresLista"></div>
+
+  <!-- Botones -->
+  <button class="btn btn-sec" id="btnReset" onclick="reset()" style="display:none">
+    Cargar otro archivo
+  </button>
+  <button class="btn btn-primary" id="btnImportar" onclick="importar()" style="display:none">
+    Importar datos a Firestore
+  </button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import {
+  getFirestore, collection, writeBatch, doc, Timestamp
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey:            "AIzaSyBOB3EZQQ8jKOyieOqt5_EebUn8ITknAfY",
+  authDomain:        "helio-produce.firebaseapp.com",
+  projectId:         "helio-produce",
+  storageBucket:     "helio-produce.firebasestorage.app",
+  messagingSenderId: "217860282947",
+  appId:             "1:217860282947:web:de5d1c000d2ff0c8efd2f6"
+});
+const db = getFirestore(app, 'andyslapry');
+
+const $ = id => document.getElementById(id);
+let datosParseados = [];
+let errores = [];
+
+/* ── HELPERS ── */
+window.ev = (e, cls) => {
+  e.preventDefault();
+  $('uploadZone').className = 'upload-zone' + (cls ? ' ' + cls : '');
+};
+window.drop = e => {
+  e.preventDefault();
+  $('uploadZone').className = 'upload-zone';
+  const file = e.dataTransfer.files[0];
+  if (file) procesarArchivo(file);
+};
+window.leerArchivo = input => {
+  if (input.files[0]) procesarArchivo(input.files[0]);
+};
+
+/* ── PARSE MONTO ── */
+function parseMonto(str) {
+  if (!str) return null;
+  const limpio = str.trim().replace(/[$\s,]/g, '');
+  if (!limpio) return null;
+  const n = parseFloat(limpio);
+  if (isNaN(n) || n === 0) return null;
+  return n;
+}
+
+/* ── PARSE CSV ── */
+function parsearCSV(texto) {
+  const lineas = texto.split('\n');
+  const resultado = [];
+
+  for (let i = 0; i < lineas.length; i++) {
+    const linea = lineas[i];
+    if (!linea.trim()) continue;
+
+    const cols = linea.split(',');
+    const nombre = cols[0]?.trim();
+    if (!nombre) continue;
+
+    const ventas = [];
+    const pagos  = [];
+    // Columnas B a AF = índices 1 a 31 (AG=índice 32 es el total, se omite)
+    for (let j = 1; j <= 31; j++) {
+      const monto = parseMonto(cols[j]);
+      if (monto === null) continue;
+      if (monto > 0) {
+        ventas.push(monto * 1000);
+      } else {
+        pagos.push(Math.abs(monto) * 1000); // guardamos como positivo
+      }
+    }
+
+    const saldo = ventas.reduce((a, b) => a + b, 0)
+                - pagos.reduce((a, b) => a + b, 0);
+    resultado.push({ nombre, ventas, pagos, saldo });
+  }
+
+  return resultado;
+}
+
+/* ── PROCESAR ARCHIVO ── */
+function procesarArchivo(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    datosParseados = parsearCSV(e.target.result);
+    mostrarPreview();
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+/* ── PREVIEW ── */
+function mostrarPreview() {
+  const sinMovimientos = datosParseados.filter(d => d.ventas.length === 0 && d.pagos.length === 0);
+  const totalVentas = datosParseados.reduce((a, d) => a + d.ventas.length, 0);
+  const totalPagos  = datosParseados.reduce((a, d) => a + d.pagos.length,  0);
+
+  $('statClientes').textContent = datosParseados.length;
+  $('statVentas').textContent   = totalVentas;
+  $('statPagos').textContent    = totalPagos;
+  $('statOmitidos').textContent = sinMovimientos.length;
+  $('resumen').style.display = 'block';
+
+  const fmtGs = n => '₲ ' + Math.round(n).toLocaleString('es-PY');
+
+  $('previewBody').innerHTML = datosParseados.map((d, i) => {
+    const sinMov = d.ventas.length === 0 && d.pagos.length === 0;
+    return `
+      <tr>
+        <td class="${sinMov ? 'zero' : ''}">${i + 1}</td>
+        <td>${d.nombre}</td>
+        <td class="ventas-count ${d.ventas.length === 0 ? 'zero' : ''}">${d.ventas.length}</td>
+        <td class="num" style="color:${d.pagos.length > 0 ? '#27AE60' : '#aaa'}">${d.pagos.length}</td>
+        <td class="num ${sinMov ? 'zero' : 'saldo'}">${fmtGs(d.saldo)}</td>
+      </tr>`;
+  }).join('');
+
+  $('previewWrap').style.display = 'block';
+  $('btnImportar').style.display = 'block';
+  $('btnReset').style.display = 'block';
+  $('uploadZone').style.display = 'none';
+}
+
+/* ── IMPORTAR ── */
+window.importar = async () => {
+  if (!datosParseados.length) return;
+
+  $('btnImportar').disabled = true;
+  $('btnReset').disabled = true;
+  $('progresoWrap').style.display = 'block';
+  $('resultado').style.display = 'none';
+  $('erroresLista').style.display = 'none';
+  errores = [];
+
+  const total = datosParseados.length;
+  const fechaHoy = Timestamp.fromDate(new Date());
+  let creados = 0;
+  let ventasCreadas = 0;
+  let pagosCreados = 0;
+
+  // Procesamos en lotes de 40 clientes para no saturar Firestore
+  // Cada cliente puede tener hasta 31 ventas = máx ~32 ops por cliente
+  // Lote de 40 clientes = máx 40 * 32 = 1280 ops → dividimos en sub-batches de 400
+  const LOTE = 40;
+
+  for (let i = 0; i < datosParseados.length; i += LOTE) {
+    const grupo = datosParseados.slice(i, i + LOTE);
+    const ops = []; // {type, ref, data}
+
+    for (const fila of grupo) {
+      const clienteRef = doc(collection(db, 'clientes'));
+
+      ops.push({
+        ref: clienteRef,
+        data: {
+          nombre:          fila.nombre,
+          identificacion:  '',
+          telefono:        '',
+          email:           '',
+          direccion:       '',
+          saldoPendiente:  fila.saldo
+        }
+      });
+
+      for (const monto of fila.ventas) {
+        ops.push({
+          ref: doc(collection(db, 'ventas')),
+          data: {
+            clienteId:     clienteRef.id,
+            clienteNombre: fila.nombre,
+            descripcion:   'monedas/billetes',
+            fecha:         fechaHoy,
+            monto:         monto,
+            estado:        'pendiente'
+          }
+        });
+      }
+
+      for (const monto of fila.pagos) {
+        ops.push({
+          ref: doc(collection(db, 'pagos')),
+          data: {
+            clienteId:     clienteRef.id,
+            clienteNombre: fila.nombre,
+            monto:         monto,
+            fecha:         fechaHoy,
+            observacion:   'monedas/billetes'
+          }
+        });
+      }
+    }
+
+    // Dividir ops en sub-batches de 490 (límite Firestore: 500)
+    const SUB = 490;
+    for (let s = 0; s < ops.length; s += SUB) {
+      const batch = writeBatch(db);
+      const slice = ops.slice(s, s + SUB);
+      for (const op of slice) {
+        batch.set(op.ref, op.data);
+      }
+      try {
+        await batch.commit();
+      } catch (e) {
+        errores.push(`Lote ${i}–${i + LOTE}: ${e.message}`);
+      }
+    }
+
+    creados       += grupo.length;
+    ventasCreadas += grupo.reduce((a, d) => a + d.ventas.length, 0);
+    pagosCreados  += grupo.reduce((a, d) => a + d.pagos.length,  0);
+
+    const pct = Math.round((creados / total) * 100);
+    $('barra').style.width = pct + '%';
+    $('progresoPct').textContent = pct + '%';
+    $('progresoTxt').textContent = `Importando...`;
+    $('progresoDetalle').textContent = `${creados} de ${total} clientes · ${ventasCreadas} ventas · ${pagosCreados} pagos`;
+
+    // Pequeña pausa para no bloquear el hilo
+    await new Promise(r => setTimeout(r, 50));
+  }
+
+  // Resultado final
+  const res = $('resultado');
+  res.style.display = 'block';
+
+  if (errores.length === 0) {
+    res.className = 'resultado ok';
+    res.innerHTML = `✓ Importación completada.<br>
+      <strong>${creados} clientes</strong> · <strong>${ventasCreadas} ventas</strong> · <strong>${pagosCreados} pagos</strong> creados en Firestore.<br>
+      Podés cerrar esta página y abrir la app.`;
+  } else {
+    res.className = 'resultado err';
+    res.innerHTML = `⚠ Importación con ${errores.length} error(es). Revisá el detalle abajo.`;
+    $('erroresLista').style.display = 'block';
+    $('erroresLista').innerHTML = errores.map(e => `<div>• ${e}</div>`).join('');
+  }
+
+  $('progresoTxt').textContent = 'Finalizado';
+  $('btnImportar').style.display = 'none';
+  $('btnReset').disabled = false;
+};
+
+/* ── RESET ── */
+window.reset = () => {
+  datosParseados = [];
+  errores = [];
+  $('resumen').style.display = 'none';
+  $('previewWrap').style.display = 'none';
+  $('progresoWrap').style.display = 'none';
+  $('resultado').style.display = 'none';
+  $('erroresLista').style.display = 'none';
+  $('btnImportar').style.display = 'none';
+  $('btnReset').style.display = 'none';
+  $('uploadZone').style.display = 'block';
+  $('fileInput').value = '';
+  $('btnImportar').disabled = false;
+};
+</script>
+</body>
+</html>

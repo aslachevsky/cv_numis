@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Limpiar Firestore — ControlVentas</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f4f6f8;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 24px;
+    }
+    .card {
+      background: #fff; border-radius: 12px;
+      padding: 32px; width: 100%; max-width: 480px;
+      box-shadow: 0 2px 16px rgba(0,0,0,.08);
+    }
+    h1 { font-size: 20px; color: #1a1a1a; margin-bottom: 4px; }
+    .sub { font-size: 13px; color: #888; margin-bottom: 24px; }
+    .danger {
+      background: #fdedec; border: 1px solid #f5b7b1;
+      border-radius: 8px; padding: 14px;
+      font-size: 13px; color: #922b21;
+      margin-bottom: 20px; line-height: 1.6;
+    }
+    .coleccion {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border-radius: 8px;
+      margin-bottom: 8px; background: #f8f9fa;
+      font-size: 14px; font-weight: 500; color: #444;
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .status { margin-left: auto; font-size: 12px; color: #aaa; }
+    .ok   .status { color: #27AE60; font-weight: 700; }
+    .err  .status { color: #e74c3c; font-weight: 700; }
+    .busy .status { color: #888; }
+    .btn {
+      width: 100%; padding: 13px; border: none; border-radius: 8px;
+      font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 20px;
+    }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-danger { background: #C0392B; color: #fff; }
+    .btn-danger:hover:not(:disabled) { background: #922B21; }
+    #resultado {
+      margin-top: 16px; padding: 13px; border-radius: 8px;
+      font-size: 13px; display: none;
+    }
+    .resultado-ok  { background: #eafaf1; color: #1e8449; border: 1px solid #a9dfbf; }
+    .resultado-err { background: #fdedec; color: #922b21; border: 1px solid #f5b7b1; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>Limpiar base de datos</h1>
+  <p class="sub">Elimina todos los registros de Firestore</p>
+
+  <div class="danger">
+    ⚠️ <strong>Esta acción es irreversible.</strong> Se eliminarán todos los clientes,
+    ventas y pagos de la base de datos. Usá esto solo para limpiar datos de prueba
+    o importaciones incorrectas.
+  </div>
+
+  <div class="coleccion" id="col-clientes">
+    <span class="dot" style="background:#C0392B"></span> clientes
+    <span class="status">esperando</span>
+  </div>
+  <div class="coleccion" id="col-ventas">
+    <span class="dot" style="background:#4A90D9"></span> ventas
+    <span class="status">esperando</span>
+  </div>
+  <div class="coleccion" id="col-pagos">
+    <span class="dot" style="background:#27AE60"></span> pagos
+    <span class="status">esperando</span>
+  </div>
+
+  <button class="btn btn-danger" id="btnLimpiar" onclick="limpiar()">
+    Eliminar todos los datos
+  </button>
+
+  <div id="resultado"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import {
+  getFirestore, collection, getDocs, writeBatch, doc
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey:            "AIzaSyBOB3EZQQ8jKOyieOqt5_EebUn8ITknAfY",
+  authDomain:        "helio-produce.firebaseapp.com",
+  projectId:         "helio-produce",
+  storageBucket:     "helio-produce.firebasestorage.app",
+  messagingSenderId: "217860282947",
+  appId:             "1:217860282947:web:de5d1c000d2ff0c8efd2f6"
+});
+const db = getFirestore(app, 'andyslapry');
+
+const $ = id => document.getElementById(id);
+
+function setEstado(id, estado, texto) {
+  const el = $(id);
+  el.className = `coleccion ${estado}`;
+  el.querySelector('.status').textContent = texto;
+}
+
+async function eliminarColeccion(nombre) {
+  setEstado(`col-${nombre}`, 'busy', 'leyendo...');
+  const snap = await getDocs(collection(db, nombre));
+  const total = snap.docs.length;
+
+  if (total === 0) {
+    setEstado(`col-${nombre}`, 'ok', '✓ vacía');
+    return 0;
+  }
+
+  setEstado(`col-${nombre}`, 'busy', `eliminando ${total}...`);
+
+  // Borrar en lotes de 490
+  const ids = snap.docs.map(d => d.id);
+  for (let i = 0; i < ids.length; i += 490) {
+    const batch = writeBatch(db);
+    ids.slice(i, i + 490).forEach(id => {
+      batch.delete(doc(db, nombre, id));
+    });
+    await batch.commit();
+  }
+
+  setEstado(`col-${nombre}`, 'ok', `✓ ${total} eliminados`);
+  return total;
+}
+
+window.limpiar = async () => {
+  const btn = $('btnLimpiar');
+  btn.disabled = true;
+  btn.textContent = 'Limpiando...';
+  $('resultado').style.display = 'none';
+
+  let totalEliminados = 0;
+  let errMsg = '';
+
+  try {
+    totalEliminados += await eliminarColeccion('clientes');
+    totalEliminados += await eliminarColeccion('ventas');
+    totalEliminados += await eliminarColeccion('pagos');
+  } catch(e) {
+    errMsg = e.message;
+  }
+
+  const res = $('resultado');
+  res.style.display = 'block';
+
+  if (!errMsg) {
+    res.className = 'resultado-ok';
+    res.innerHTML = `✓ Listo. Se eliminaron <strong>${totalEliminados} registros</strong> en total.<br>
+      Podés cerrar esta página y volver a importar.`;
+    btn.textContent = 'Base limpia ✓';
+  } else {
+    res.className = 'resultado-err';
+    res.textContent = 'Error: ' + errMsg;
+    btn.disabled = false;
+    btn.textContent = 'Reintentar';
+  }
+};
+</script>
+</body>
+</html>

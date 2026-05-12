@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ControlVentas</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary:   #C0392B;
+      --primary-d: #922B21;
+      --ventas:    #4A90D9;
+      --pagos:     #27AE60;
+      --compras:   #E67E22;
+      --egresos:   #8E44AD;
+      --bg:        #f4f6f8;
+      --card:      #fff;
+      --text:      #1a1a1a;
+      --text2:     #666;
+      --border:    #e5e7eb;
+      --radius:    10px;
+    }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 72px;
+    }
+
+    /* ---- Header ---- */
+    header {
+      background: var(--primary);
+      color: #fff;
+      padding: 14px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1  { font-size: 17px; font-weight: 700; }
+    header .sub { font-size: 12px; opacity: .75; margin-top: 1px; }
+
+    /* ---- Bottom nav ---- */
+    nav {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: #fff;
+      border-top: 1px solid var(--border);
+      display: flex;
+      z-index: 100;
+      box-shadow: 0 -2px 8px rgba(0,0,0,.06);
+    }
+    nav button {
+      flex: 1;
+      padding: 9px 4px 7px;
+      border: none; background: none;
+      cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      font-size: 10px; color: var(--text2);
+      transition: color .15s;
+    }
+    nav button .icon { font-size: 19px; }
+    nav button.active { color: var(--primary); font-weight: 700; }
+
+    /* ---- Sections ---- */
+    .section { display: none; padding: 14px; max-width: 600px; margin: 0 auto; }
+    .section.active { display: block; }
+
+    /* ---- Card ---- */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-bottom: 14px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .card-title {
+      font-size: 14px; font-weight: 700;
+      margin-bottom: 14px;
+      color: var(--text);
+    }
+
+    /* ---- Form ---- */
+    .form-group { margin-bottom: 12px; }
+    label {
+      display: block;
+      font-size: 11px; font-weight: 600;
+      color: var(--text2);
+      margin-bottom: 4px;
+      text-transform: uppercase; letter-spacing: .3px;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px; color: var(--text);
+      background: #fafafa;
+      transition: border-color .15s;
+      -webkit-appearance: none; appearance: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: #fff;
+    }
+    textarea { resize: vertical; min-height: 66px; }
+
+    .select-wrap { position: relative; }
+    .select-wrap::after {
+      content: '▾';
+      position: absolute; right: 12px; top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none; color: var(--text2); font-size: 12px;
+    }
+    .select-wrap select { padding-right: 28px; }
+
+    .btn {
+      width: 100%; padding: 12px;
+      border: none; border-radius: 8px;
+      font-size: 14px; font-weight: 700;
+      cursor: pointer; transition: opacity .15s;
+    }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-d); }
+
+    /* ---- Toast ---- */
+    .toast {
+      position: fixed; top: 62px; left: 50%;
+      transform: translateX(-50%) translateY(-16px);
+      background: #1a1a1a; color: #fff;
+      padding: 9px 18px; border-radius: 8px;
+      font-size: 13px; z-index: 300;
+      opacity: 0; transition: all .25s;
+      pointer-events: none; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.ok  { background: #27AE60; }
+    .toast.err { background: #e74c3c; }
+
+    /* ---- Lista items ---- */
+    .lista-item {
+      padding: 11px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: flex-start; gap: 10px;
+    }
+    .lista-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .lista-item:first-child { padding-top: 0; }
+    .item-main { flex: 1; min-width: 0; }
+    .item-nombre {
+      font-size: 14px; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .item-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+    .item-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+    .item-monto { font-size: 14px; font-weight: 700; white-space: nowrap; }
+
+    /* ---- Badges ---- */
+    .badge {
+      display: inline-block; padding: 2px 8px;
+      border-radius: 20px; font-size: 10px; font-weight: 700;
+    }
+    .badge-pendiente { background: #fef3cd; color: #856404; }
+    .badge-pagado    { background: #d1f7e0; color: #155724; }
+    .badge-enviado   { background: #cce5ff; color: #004085; }
+
+    /* ---- Saldo ---- */
+    .saldo-pos  { color: #e74c3c; }
+    .saldo-cero { color: #27AE60; }
+
+    /* ---- States ---- */
+    .empty { text-align: center; color: var(--text2); font-size: 13px; padding: 20px 0; }
+    .cargando { text-align: center; color: var(--text2); font-size: 13px; padding: 14px; }
+
+    /* ---- Clientes: toolbar ---- */
+    .cl-toolbar {
+      display: flex; gap: 8px; align-items: center;
+      margin-bottom: 12px; flex-wrap: wrap;
+    }
+    .cl-search {
+      flex: 1; min-width: 0;
+      padding: 9px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 14px;
+      background: #fafafa; color: var(--text);
+    }
+    .cl-search:focus { outline: none; border-color: var(--primary); background: #fff; }
+    .cl-sort {
+      padding: 9px 10px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 13px;
+      background: #fafafa; color: var(--text);
+      cursor: pointer; -webkit-appearance: none; appearance: none;
+    }
+    .cl-sort:focus { outline: none; border-color: var(--primary); }
+    .btn-nuevo {
+      padding: 9px 14px;
+      background: var(--primary); color: #fff;
+      border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 700;
+      cursor: pointer; white-space: nowrap;
+    }
+    .btn-nuevo:hover { background: var(--primary-d); }
+    .cl-count { font-size: 12px; color: var(--text2); margin-bottom: 6px; }
+    .cl-pager {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; margin-bottom: 12px;
+      font-size: 12px; color: var(--text2);
+    }
+    .cl-pager button {
+      padding: 6px 10px; border: 1.5px solid var(--border);
+      border-radius: 8px; background: #fff; color: var(--text);
+      cursor: pointer; font-size: 12px;
+    }
+    .cl-pager button:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* ---- Clientes: tabla ---- */
+    .cl-tabla { width: 100%; border-collapse: collapse; }
+    .cl-tabla th {
+      font-size: 11px; font-weight: 700; color: var(--text2);
+      text-transform: uppercase; letter-spacing: .3px;
+      padding: 6px 8px; text-align: left;
+      border-bottom: 2px solid var(--border);
+      cursor: pointer; user-select: none; white-space: nowrap;
+    }
+    .cl-tabla th:hover { color: var(--primary); }
+    .cl-tabla th .sort-icon { font-size: 10px; margin-left: 3px; opacity: .5; }
+    .cl-tabla th.sorted .sort-icon { opacity: 1; color: var(--primary); }
+    .cl-tabla td {
+      padding: 10px 8px;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 13px; color: var(--text);
+      vertical-align: middle;
+    }
+    .cl-tabla tr:last-child td { border-bottom: none; }
+    .cl-tabla tr:hover td { background: #fafafa; }
+    .td-nombre { font-weight: 600; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .td-id { color: var(--text2); font-size: 12px; }
+    .td-saldo { font-weight: 700; text-align: right; white-space: nowrap; }
+    .td-acc { text-align: right; }
+    .btn-editar {
+      padding: 5px 10px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px; background: #fff;
+      font-size: 12px; font-weight: 600;
+      color: var(--text2); cursor: pointer;
+      touch-action: manipulation;
+      user-select: none; -webkit-user-select: none;
+    }
+    .btn-editar:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-editar:active { background: #f0f0f0; }
+
+    /* ---- Modal ---- */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 500; display: flex;
+      align-items: flex-end;
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal {
+      background: #fff;
+      border-radius: 16px 16px 0 0;
+      padding: 24px 20px 32px;
+      width: 100%; max-width: 560px;
+      margin: 0 auto;
+      animation: slideUp .2s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(40px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    .modal-title {
+      font-size: 16px; font-weight: 700;
+      margin-bottom: 18px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-close {
+      background: none; border: none;
+      font-size: 20px; color: var(--text2);
+      cursor: pointer; line-height: 1; padding: 4px;
+    }
+    .modal-close:hover { color: var(--primary); }
+    .modal-btns { display: flex; gap: 10px; margin-top: 20px; }
+    .modal-btns .btn { flex: 1; }
+    .btn-cancel {
+      background: #f4f6f8; color: var(--text);
+      border: 1.5px solid var(--border);
+    }
+    .btn-cancel:hover { background: #e9ecef; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>ControlVentas</h1>
+    <div class="sub" id="headerSub">Clientes</div>
+  </div>
+</header>
+
+<div class="toast" id="toast"></div>
+
+<!-- ═══════════ CLIENTES ═══════════ -->
+<div class="section active" id="sec-clientes">
+  <div class="card">
+    <div class="cl-toolbar">
+      <input class="cl-search" id="cl-buscar" placeholder="🔍 Buscar cliente..." oninput="clientesPagina = 1; filtrarClientes()" autocomplete="off">
+      <select class="cl-sort" id="cl-orden" onchange="clientesPagina = 1; filtrarClientes()">
+        <option value="nombre-az">Nombre A→Z</option>
+        <option value="nombre-za">Nombre Z→A</option>
+        <option value="saldo-mayor">Mayor saldo</option>
+        <option value="saldo-menor">Menor saldo</option>
+      </select>
+      <button class="btn-nuevo" onclick="abrirModalNuevo()">+ Nuevo</button>
+    </div>
+    <div class="cl-count" id="cl-count"></div>
+    <div class="cl-pager" id="cl-pager"></div>
+    <div id="lista-clientes" class="cargando">Cargando...</div>
+  </div>
+</div>
+
+<!-- ═══════════ MODAL CLIENTE ═══════════ -->
+<div class="modal-overlay hidden" id="modal-overlay" onclick="cerrarModalSiOverlay(event)">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="modal-titulo">Nuevo cliente</span>
+      <button class="modal-close" onclick="cerrarModal()">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Nombre *</label>
+      <input type="text" id="m-nombre" placeholder="Nombre o razón social" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label>Identificación (RUC / CI)</label>
+      <input type="text" id="m-id" placeholder="Opcional" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label>Teléfono</label>
+      <input type="tel" id="m-tel" placeholder="Opcional">
+    </div>
+    <div class="form-group" id="m-saldo-grupo">
+      <label>Saldo pendiente (₲)</label>
+      <input type="number" id="m-saldo" placeholder="0" step="1000">
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-cancel" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-modal-guardar" onclick="guardarModal()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ VENTAS ═══════════ -->
+<div class="section" id="sec-ventas">
+  <div class="card">
+    <div class="cl-toolbar">
+      <div class="select-wrap" style="flex:1; min-width:0">
+        <select class="cl-sort" id="v-fil-cliente" onchange="filtrarVentas()" style="width:100%">
+          <option value="">— Seleccionar cliente —</option>
+        </select>
+      </div>
+      <select class="cl-sort" id="v-fil-estado" onchange="filtrarVentas()">
+        <option value="pendiente">Pendiente</option>
+        <option value="">Todos</option>
+        <option value="pagado">Pagado</option>
+        <option value="enviado">Enviado</option>
+      </select>
+      <button class="btn-nuevo" onclick="abrirModalNuevaVenta()">+ Nueva</button>
+    </div>
+    <div class="cl-count" id="v-count"></div>
+    <div id="lista-ventas"></div>
+  </div>
+</div>
+
+<!-- ═══════════ MODAL VENTA ═══════════ -->
+<div class="modal-overlay hidden" id="modal-venta-overlay" onclick="cerrarModalVentaSiOverlay(event)">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="mv-titulo">Nueva venta</span>
+      <button class="modal-close" onclick="cerrarModalVenta()">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Cliente *</label>
+      <div class="select-wrap">
+        <select id="mv-cliente"><option value="">Seleccionar cliente...</option></select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Descripción</label>
+      <textarea id="mv-desc" placeholder="Detalle de la venta" style="min-height:56px"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Fecha *</label>
+      <input type="date" id="mv-fecha">
+    </div>
+    <div class="form-group">
+      <label>Monto (₲) *</label>
+      <input type="number" id="mv-monto" placeholder="0" min="0" step="1000">
+    </div>
+    <div class="form-group">
+      <label>Estado</label>
+      <div class="select-wrap">
+        <select id="mv-estado">
+          <option value="pendiente">Pendiente</option>
+          <option value="pagado">Pagado</option>
+          <option value="enviado">Enviado</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-cancel" onclick="cerrarModalVenta()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-mv-guardar" onclick="guardarModalVenta()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PAGOS ═══════════ -->
+<div class="section" id="sec-pagos">
+  <div class="card">
+    <div class="cl-toolbar">
+      <input class="cl-search" id="p-fecha-desde" type="date" onchange="cargarPagos()" title="Fecha desde">
+      <input class="cl-search" id="p-fecha-hasta" type="date" onchange="cargarPagos()" title="Fecha hasta">
+      <input class="cl-search" id="p-buscar" placeholder="🔍 Buscar cliente..." oninput="filtrarPagos()" autocomplete="off">
+      <select class="cl-sort" id="p-fil-orden" onchange="filtrarPagos()">
+        <option value="fecha-desc">Más reciente</option>
+        <option value="fecha-asc">Más antiguo</option>
+        <option value="monto-mayor">Mayor monto</option>
+        <option value="monto-menor">Menor monto</option>
+      </select>
+      <button class="btn-nuevo" onclick="abrirModalNuevoPago()">+ Nuevo</button>
+    </div>
+    <div class="cl-count" id="p-count"></div>
+    <div id="lista-pagos" class="cargando">Cargando...</div>
+  </div>
+</div>
+
+<!-- ═══════════ MODAL PAGO ═══════════ -->
+<div class="modal-overlay hidden" id="modal-pago-overlay" onclick="cerrarModalPagoSiOverlay(event)">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="mp-titulo">Nuevo pago</span>
+      <button class="modal-close" onclick="cerrarModalPago()">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Cliente *</label>
+      <div class="select-wrap">
+        <select id="mp-cliente"><option value="">Seleccionar cliente...</option></select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Monto (₲) *</label>
+      <input type="number" id="mp-monto" placeholder="0" min="0" step="1000">
+    </div>
+    <div class="form-group">
+      <label>Fecha *</label>
+      <input type="date" id="mp-fecha">
+    </div>
+    <div class="form-group">
+      <label>Observación</label>
+      <input type="text" id="mp-obs" placeholder="Opcional" autocomplete="off">
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-cancel" onclick="cerrarModalPago()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-mp-guardar" onclick="guardarModalPago()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ COMPRAS ═══════════ -->
+<div class="section" id="sec-compras">
+  <div class="card">
+    <div class="card-title">Nueva compra</div>
+    <div class="form-group">
+      <label>Fecha *</label>
+      <input type="date" id="co-fecha">
+    </div>
+    <div class="form-group">
+      <label>Monto (₲) *</label>
+      <input type="number" id="co-monto" placeholder="0" min="0" step="1000">
+    </div>
+    <div class="form-group">
+      <label>Observación *</label>
+      <textarea id="co-obs" placeholder="Detalle de la compra"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Proveedor</label>
+      <input type="text" id="co-prov" placeholder="Opcional" autocomplete="off">
+    </div>
+    <button class="btn btn-primary" id="btn-co" onclick="guardarCompra()">Guardar compra</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Últimas compras</div>
+    <div id="lista-compras" class="cargando">Cargando...</div>
+  </div>
+</div>
+
+<!-- ═══════════ EGRESOS ═══════════ -->
+<div class="section" id="sec-egresos">
+  <div class="card">
+    <div class="card-title">Nuevo egreso extraordinario</div>
+    <div class="form-group">
+      <label>Fecha *</label>
+      <input type="date" id="e-fecha">
+    </div>
+    <div class="form-group">
+      <label>Monto (₲) *</label>
+      <input type="number" id="e-monto" placeholder="0" min="0" step="1000">
+    </div>
+    <div class="form-group">
+      <label>Descripción *</label>
+      <textarea id="e-desc" placeholder="Detalle del egreso"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Categoría</label>
+      <input type="text" id="e-cat" placeholder="Opcional" autocomplete="off">
+    </div>
+    <button class="btn btn-primary" id="btn-e" onclick="guardarEgreso()">Guardar egreso</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Últimos egresos</div>
+    <div id="lista-egresos" class="cargando">Cargando...</div>
+  </div>
+</div>
+
+<!-- ═══════════ NAV ═══════════ -->
+<nav>
+  <button class="active" id="nav-clientes" onclick="ir('clientes')">
+    <span class="icon">👥</span>Clientes
+  </button>
+  <button id="nav-ventas" onclick="ir('ventas')">
+    <span class="icon">🧾</span>Ventas
+  </button>
+  <button id="nav-pagos" onclick="ir('pagos')">
+    <span class="icon">💰</span>Pagos
+  </button>
+  <button id="nav-compras" onclick="ir('compras')">
+    <span class="icon">🛒</span>Compras
+  </button>
+  <button id="nav-egresos" onclick="ir('egresos')">
+    <span class="icon">📤</span>Egresos
+  </button>
+</nav>
+
+<script type="module">
+import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import {
+  getFirestore, collection, addDoc, getDocs,
+  query, where, orderBy, limit, doc, updateDoc, increment, Timestamp, setDoc
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+/* ── CONFIG ── */
+const app = initializeApp({
+  apiKey:            "AIzaSyBOB3EZQQ8jKOyieOqt5_EebUn8ITknAfY",
+  authDomain:        "helio-produce.firebaseapp.com",
+  projectId:         "helio-produce",
+  storageBucket:     "helio-produce.firebasestorage.app",
+  messagingSenderId: "217860282947",
+  appId:             "1:217860282947:web:de5d1c000d2ff0c8efd2f6"
+});
+const db = getFirestore(app, 'andyslapry');
+
+/* ── HELPERS ── */
+const hoy = () => new Date().toISOString().split('T')[0];
+
+const fmtFecha = ts => {
+  if (!ts) return '-';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('es-PY', { day:'2-digit', month:'2-digit', year:'numeric' });
+};
+
+const fmtGs = n => '₲ ' + Math.round(n || 0).toLocaleString('es-PY');
+
+const toTs = s => { const [y,m,d] = s.split('-'); return Timestamp.fromDate(new Date(y, m-1, d)); };
+
+const $ = id => document.getElementById(id);
+
+function toast(msg, tipo = 'ok') {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = `toast ${tipo} show`;
+  setTimeout(() => t.className = 'toast', 2800);
+}
+
+function disBtn(id, label) {
+  const b = $(id); b.disabled = true; b.textContent = label;
+}
+function enBtn(id, label) {
+  const b = $(id); b.disabled = false; b.textContent = label;
+}
+
+/* ── NAV ── */
+const titulos = { clientes:'Clientes', ventas:'Ventas', pagos:'Pagos', compras:'Compras', egresos:'Egresos' };
+let actual = 'clientes';
+
+window.ir = sec => {
+  $(`sec-${actual}`).classList.remove('active');
+  $(`nav-${actual}`).classList.remove('active');
+  actual = sec;
+  $(`sec-${sec}`).classList.add('active');
+  $(`nav-${sec}`).classList.add('active');
+  $('headerSub').textContent = titulos[sec];
+  ({ clientes: cargarClientes, ventas: cargarVentas, pagos: cargarPagos,
+     compras: cargarCompras, egresos: cargarEgresos })[sec]();
+};
+
+/* ══════════════════════════
+   CLIENTES
+══════════════════════════ */
+let clientesCache = [];
+let clientesPagina = 1;
+const CLIENTES_POR_PAG = 20;
+let modalModo = 'nuevo'; // 'nuevo' | 'editar'
+let modalClienteId = null;
+
+async function cargarClientes() {
+  clientesPagina = 1;
+  $('lista-clientes').innerHTML = '<div class="cargando">Cargando...</div>';
+  const snap = await getDocs(query(collection(db,'clientes'), orderBy('nombre')));
+  clientesCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  filtrarClientes();
+  refreshSelects();
+}
+
+window.filtrarClientes = function() {
+  const q     = ($('cl-buscar')?.value || '').toLowerCase().trim();
+  const orden = $('cl-orden')?.value || 'nombre-az';
+
+  let lista = clientesCache.filter(c =>
+    !q ||
+    (c.nombre || '').toLowerCase().includes(q) ||
+    (c.identificacion || '').toLowerCase().includes(q) ||
+    (c.telefono || '').includes(q)
+  );
+
+  lista.sort((a, b) => {
+    if (orden === 'nombre-az')   return (a.nombre||'').localeCompare(b.nombre||'');
+    if (orden === 'nombre-za')   return (b.nombre||'').localeCompare(a.nombre||'');
+    if (orden === 'saldo-mayor') return (b.saldoPendiente||0) - (a.saldoPendiente||0);
+    if (orden === 'saldo-menor') return (a.saldoPendiente||0) - (b.saldoPendiente||0);
+    return 0;
+  });
+
+  const total = lista.length;
+  const paginas = Math.max(1, Math.ceil(total / CLIENTES_POR_PAG));
+  if (clientesPagina > paginas) clientesPagina = paginas;
+  const inicio = (clientesPagina - 1) * CLIENTES_POR_PAG;
+  const listaPaginada = lista.slice(inicio, inicio + CLIENTES_POR_PAG);
+
+  const countEl = $('cl-count');
+  if (countEl) countEl.textContent = `${listaPaginada.length} de ${total} cliente${total !== 1 ? 's' : ''}${q ? ' encontrados' : ''}`;
+
+  renderTablaClientes(listaPaginada);
+  renderClientesPaginacion(total, paginas);
+};
+
+function renderTablaClientes(lista) {
+  const el = $('lista-clientes');
+  if (!lista.length) {
+    el.innerHTML = '<div class="empty">Sin resultados</div>';
+    const pager = $('cl-pager'); if (pager) pager.innerHTML = '';
+    return;
+  }
+  el.innerHTML = `
+    <table class="cl-tabla">
+      <thead>
+        <tr>
+          <th onclick="sortBy('nombre-az','nombre-za')" id="th-nombre">
+            Nombre <span class="sort-icon">↕</span>
+          </th>
+          <th>ID</th>
+          <th onclick="sortBy('saldo-mayor','saldo-menor')" id="th-saldo" style="text-align:right">
+            Saldo <span class="sort-icon">↕</span>
+          </th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${lista.map(c => {
+          const saldo = c.saldoPendiente || 0;
+          return `
+            <tr>
+              <td class="td-nombre" title="${c.nombre}">${c.nombre}</td>
+              <td class="td-id">${c.identificacion || '—'}</td>
+              <td class="td-saldo ${saldo > 0 ? 'saldo-pos' : 'saldo-cero'}">${fmtGs(saldo)}</td>
+              <td class="td-acc">
+                <button class="btn-editar" data-id="${c.id}">Editar</button>
+              </td>
+            </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+
+  // Marcar columna activa
+  const orden = $('cl-orden')?.value || 'nombre-az';
+  const thN = $('th-nombre'), thS = $('th-saldo');
+  if (thN) thN.classList.toggle('sorted', orden.startsWith('nombre'));
+  if (thS) thS.classList.toggle('sorted', orden.startsWith('saldo'));
+}
+
+window.sortBy = function(asc, desc) {
+  const sel = $('cl-orden');
+  sel.value = sel.value === asc ? desc : asc;
+  clientesPagina = 1;
+  filtrarClientes();
+};
+
+function renderClientesPaginacion(total, paginas) {
+  const pager = $('cl-pager');
+  if (!pager) return;
+  if (total === 0) {
+    pager.innerHTML = '';
+    return;
+  }
+
+  pager.innerHTML = `
+    <span>Página ${clientesPagina} de ${paginas}</span>
+    <div>
+      <button type="button" onclick="cambiarPaginaClientes(-1)" ${clientesPagina === 1 ? 'disabled' : ''}>Anterior</button>
+      <button type="button" onclick="cambiarPaginaClientes(1)" ${clientesPagina === paginas ? 'disabled' : ''}>Siguiente</button>
+    </div>
+  `;
+}
+
+window.cambiarPaginaClientes = function(delta) {
+  clientesPagina += delta;
+  if (clientesPagina < 1) clientesPagina = 1;
+  filtrarClientes();
+};
+
+function refreshSelects() {
+  // Poblar el selector de cliente en el filtro de ventas
+  const sel = $('v-fil-cliente');
+  if (!sel) return;
+  const prevVal = sel.value;
+  const sorted = [...clientesCache].sort((a,b) => (a.nombre||'').localeCompare(b.nombre||''));
+  sel.innerHTML = '<option value="">— Seleccionar cliente —</option>' +
+    sorted.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+  if (prevVal) sel.value = prevVal; // mantener selección si ya había una
+}
+
+/* ---- Modal ---- */
+window.abrirModalNuevo = function() {
+  modalModo = 'nuevo';
+  modalClienteId = null;
+  $('modal-titulo').textContent = 'Nuevo cliente';
+  $('m-nombre').value = '';
+  $('m-id').value = '';
+  $('m-tel').value = '';
+  $('m-saldo').value = '0';
+  $('m-saldo-grupo').style.display = 'none'; // no mostrar saldo en nuevo
+  $('btn-modal-guardar').textContent = 'Guardar';
+  $('modal-overlay').classList.remove('hidden');
+  setTimeout(() => $('m-nombre').focus(), 100);
+};
+
+window.abrirModalEditar = function(id) {
+  const c = clientesCache.find(x => x.id === id);
+  if (!c) return;
+  modalModo = 'editar';
+  modalClienteId = id;
+  $('modal-titulo').textContent = 'Editar cliente';
+  $('m-nombre').value = c.nombre || '';
+  $('m-id').value     = c.identificacion || '';
+  $('m-tel').value    = c.telefono || '';
+  $('m-saldo').value  = c.saldoPendiente || 0;
+  $('m-saldo-grupo').style.display = 'block';
+  $('btn-modal-guardar').textContent = 'Actualizar';
+  $('modal-overlay').classList.remove('hidden');
+  setTimeout(() => $('m-nombre').focus(), 100);
+};
+
+window.cerrarModal = function() {
+  $('modal-overlay').classList.add('hidden');
+};
+
+window.cerrarModalSiOverlay = function(e) {
+  if (e.target === $('modal-overlay')) cerrarModal();
+};
+
+window.guardarModal = async function() {
+  const nombre = $('m-nombre').value.trim();
+  if (!nombre) { toast('El nombre es obligatorio', 'err'); return; }
+
+  const btn = $('btn-modal-guardar');
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+
+  try {
+    if (modalModo === 'nuevo') {
+      await addDoc(collection(db,'clientes'), {
+        nombre,
+        identificacion: $('m-id').value.trim(),
+        telefono:       $('m-tel').value.trim(),
+        email: '', direccion: '',
+        saldoPendiente: 0
+      });
+      toast('Cliente creado ✓');
+    } else {
+      await updateDoc(doc(db,'clientes', modalClienteId), {
+        nombre,
+        identificacion: $('m-id').value.trim(),
+        telefono:       $('m-tel').value.trim(),
+        saldoPendiente: parseFloat($('m-saldo').value) || 0
+      });
+      toast('Cliente actualizado ✓');
+    }
+    cerrarModal();
+    await cargarClientes();
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+
+  btn.disabled = false;
+  btn.textContent = modalModo === 'nuevo' ? 'Guardar' : 'Actualizar';
+};
+
+/* ══════════════════════════
+   VENTAS
+══════════════════════════ */
+let ventasCache = [];
+let ventaModo = 'nuevo';
+let ventaEditId = null;
+let ventaEditData = null;
+
+async function cargarVentas() {
+  $('lista-ventas').innerHTML = '<div class="cargando">Cargando...</div>';
+  try {
+    const snap = await getDocs(query(collection(db,'ventas'), orderBy('fecha','desc'), limit(500)));
+    ventasCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    filtrarVentas();
+  } catch(e) { $('lista-ventas').innerHTML = `<div class="empty">Error: ${e.message}</div>`; }
+}
+
+window.filtrarVentas = function() {
+  const clienteId = $('v-fil-cliente')?.value || '';
+  const estado    = $('v-fil-estado')?.value ?? 'pendiente';
+  const el        = $('lista-ventas');
+  const cnt       = $('v-count');
+
+  if (!clienteId) {
+    if (cnt) cnt.textContent = '';
+    el.innerHTML = '<div class="empty" style="padding:32px 0">Seleccioná un cliente para ver sus ventas</div>';
+    return;
+  }
+
+  let lista = ventasCache.filter(v => {
+    const okCliente = v.clienteId === clienteId;
+    const okEstado  = !estado || v.estado === estado;
+    return okCliente && okEstado;
+  });
+
+  if (cnt) cnt.textContent = `${lista.length} venta${lista.length !== 1 ? 's' : ''}`;
+  renderTablaVentas(lista);
+};
+
+function renderTablaVentas(lista) {
+  const el = $('lista-ventas');
+  if (!lista.length) { el.innerHTML = '<div class="empty">Sin resultados</div>'; return; }
+  el.innerHTML = `
+    <table class="cl-tabla">
+      <thead><tr>
+        <th>Cliente</th>
+        <th>Fecha</th>
+        <th style="text-align:right">Monto</th>
+        <th>Estado</th>
+        <th></th>
+      </tr></thead>
+      <tbody>${lista.map(v => `
+        <tr>
+          <td>
+            <div class="td-nombre" title="${v.clienteNombre}">${v.clienteNombre}</div>
+            ${v.descripcion ? `<div class="td-id">${v.descripcion}</div>` : ''}
+          </td>
+          <td class="td-id" style="white-space:nowrap">${fmtFecha(v.fecha)}</td>
+          <td class="td-saldo">${fmtGs(v.monto)}</td>
+          <td><span class="badge badge-${v.estado}">${v.estado}</span></td>
+          <td class="td-acc"><button class="btn-editar" data-vid="${v.id}">Editar</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+/* ── Modal venta ── */
+function syncSelectClientes(selectId) {
+  const sorted = [...clientesCache].sort((a,b) => (a.nombre||'').localeCompare(b.nombre||''));
+  $(selectId).innerHTML = '<option value="">Seleccionar cliente...</option>' +
+    sorted.map(c => `<option value="${c.id}" data-nombre="${c.nombre}">${c.nombre}</option>`).join('');
+}
+
+window.abrirModalNuevaVenta = function() {
+  ventaModo = 'nuevo'; ventaEditId = null; ventaEditData = null;
+  $('mv-titulo').textContent = 'Nueva venta';
+  syncSelectClientes('mv-cliente');
+  // Pre-seleccionar el cliente activo del filtro
+  const clienteFiltro = $('v-fil-cliente')?.value || '';
+  $('mv-cliente').value = clienteFiltro;
+  $('mv-desc').value = '';
+  $('mv-fecha').value = hoy();
+  $('mv-monto').value = '';
+  $('mv-estado').value = 'pendiente';
+  $('btn-mv-guardar').textContent = 'Guardar';
+  $('modal-venta-overlay').classList.remove('hidden');
+  setTimeout(() => $('mv-cliente').focus(), 100);
+};
+
+window.abrirModalEditarVenta = function(id) {
+  const v = ventasCache.find(x => x.id === id);
+  if (!v) return;
+  ventaModo = 'editar'; ventaEditId = id; ventaEditData = v;
+  $('mv-titulo').textContent = 'Editar venta';
+  syncSelectClientes('mv-cliente');
+  $('mv-cliente').value = v.clienteId || '';
+  $('mv-desc').value    = v.descripcion || '';
+  $('mv-fecha').value   = v.fecha?.toDate ? v.fecha.toDate().toISOString().split('T')[0] : hoy();
+  $('mv-monto').value   = v.monto || 0;
+  $('mv-estado').value  = v.estado || 'pendiente';
+  $('btn-mv-guardar').textContent = 'Actualizar';
+  $('modal-venta-overlay').classList.remove('hidden');
+};
+
+window.cerrarModalVenta = () => $('modal-venta-overlay').classList.add('hidden');
+window.cerrarModalVentaSiOverlay = e => { if (e.target === $('modal-venta-overlay')) cerrarModalVenta(); };
+
+window.guardarModalVenta = async function() {
+  const sel = $('mv-cliente');
+  const clienteId     = sel.value;
+  const clienteNombre = sel.options[sel.selectedIndex]?.dataset.nombre || '';
+  const fecha  = $('mv-fecha').value;
+  const monto  = parseFloat($('mv-monto').value);
+  const estado = $('mv-estado').value;
+
+  if (!clienteId) { toast('Seleccioná un cliente', 'err'); return; }
+  if (!fecha)     { toast('La fecha es obligatoria', 'err'); return; }
+  if (!monto || monto <= 0) { toast('El monto debe ser mayor a 0', 'err'); return; }
+
+  const btn = $('btn-mv-guardar');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+
+  try {
+    if (ventaModo === 'nuevo') {
+      await addDoc(collection(db,'ventas'), {
+        clienteId, clienteNombre,
+        descripcion: $('mv-desc').value.trim(),
+        fecha: toTs(fecha), monto, estado
+      });
+      await updateDoc(doc(db,'clientes',clienteId), { saldoPendiente: increment(monto) });
+      toast('Venta guardada ✓');
+    } else {
+      const delta = monto - (ventaEditData.monto || 0);
+      await updateDoc(doc(db,'ventas', ventaEditId), {
+        clienteId, clienteNombre,
+        descripcion: $('mv-desc').value.trim(),
+        fecha: toTs(fecha), monto, estado
+      });
+      // Ajuste de saldo solo si cambió el cliente o el monto
+      if (delta !== 0 || clienteId !== ventaEditData.clienteId) {
+        if (clienteId !== ventaEditData.clienteId) {
+          // Revertir en cliente anterior y aplicar en nuevo
+          if (ventaEditData.clienteId)
+            await updateDoc(doc(db,'clientes',ventaEditData.clienteId), { saldoPendiente: increment(-(ventaEditData.monto||0)) });
+          await updateDoc(doc(db,'clientes',clienteId), { saldoPendiente: increment(monto) });
+        } else {
+          await updateDoc(doc(db,'clientes',clienteId), { saldoPendiente: increment(delta) });
+        }
+      }
+      toast('Venta actualizada ✓');
+    }
+    cerrarModalVenta();
+    await cargarVentas();
+    await cargarClientes();
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+  btn.disabled = false;
+  btn.textContent = ventaModo === 'nuevo' ? 'Guardar' : 'Actualizar';
+};
+
+/* ══════════════════════════
+   PAGOS
+══════════════════════════ */
+let pagosCache = [];
+let pagoModo = 'nuevo';
+let pagoEditId = null;
+let pagoEditData = null;
+
+async function cargarPagos() {
+  const desde = $('p-fecha-desde')?.value || '';
+  const hasta = $('p-fecha-hasta')?.value || '';
+  if (!desde || !hasta) {
+    $('lista-pagos').innerHTML = '<div class="empty" style="padding:32px 0">Seleccioná un rango de fechas para ver pagos</div>';
+    if ($('p-count')) $('p-count').textContent = '';
+    return;
+  }
+  if (desde > hasta) {
+    $('lista-pagos').innerHTML = '<div class="empty" style="padding:32px 0">Fecha desde no puede ser posterior a fecha hasta</div>';
+    if ($('p-count')) $('p-count').textContent = '';
+    return;
+  }
+
+  $('lista-pagos').innerHTML = '<div class="cargando">Cargando...</div>';
+  try {
+    const snap = await getDocs(query(
+      collection(db,'pagos'),
+      where('fecha', '>=', toTs(desde)),
+      where('fecha', '<=', toTs(hasta)),
+      orderBy('fecha','desc'),
+      limit(500)
+    ));
+    pagosCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    filtrarPagos();
+  } catch(e) {
+    $('lista-pagos').innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+    if ($('p-count')) $('p-count').textContent = '';
+  }
+}
+
+window.filtrarPagos = function() {
+  const desde = $('p-fecha-desde')?.value || '';
+  const hasta = $('p-fecha-hasta')?.value || '';
+  if (!desde || !hasta) {
+    $('lista-pagos').innerHTML = '<div class="empty" style="padding:32px 0">Seleccioná un rango de fechas para ver pagos</div>';
+    if ($('p-count')) $('p-count').textContent = '';
+    return;
+  }
+
+  const q     = ($('p-buscar')?.value || '').toLowerCase().trim();
+  const orden = $('p-fil-orden')?.value || 'fecha-desc';
+
+  let lista = pagosCache.filter(p =>
+    !q || (p.clienteNombre||'').toLowerCase().includes(q)
+  );
+
+  lista.sort((a, b) => {
+    if (orden === 'fecha-desc')  return (b.fecha?.seconds||0) - (a.fecha?.seconds||0);
+    if (orden === 'fecha-asc')   return (a.fecha?.seconds||0) - (b.fecha?.seconds||0);
+    if (orden === 'monto-mayor') return (b.monto||0) - (a.monto||0);
+    if (orden === 'monto-menor') return (a.monto||0) - (b.monto||0);
+    return 0;
+  });
+
+  const cnt = $('p-count');
+  if (cnt) cnt.textContent = `${lista.length} pago${lista.length !== 1 ? 's' : ''}`;
+  renderTablaPagos(lista);
+};
+
+function renderTablaPagos(lista) {
+  const el = $('lista-pagos');
+  if (!lista.length) { el.innerHTML = '<div class="empty">Sin resultados</div>'; return; }
+  el.innerHTML = `
+    <table class="cl-tabla">
+      <thead><tr>
+        <th>Cliente</th>
+        <th>Fecha</th>
+        <th style="text-align:right">Monto</th>
+        <th>Observación</th>
+        <th></th>
+      </tr></thead>
+      <tbody>${lista.map(p => `
+        <tr>
+          <td class="td-nombre" title="${p.clienteNombre}">${p.clienteNombre}</td>
+          <td class="td-id" style="white-space:nowrap">${fmtFecha(p.fecha)}</td>
+          <td class="td-saldo" style="color:var(--pagos)">${fmtGs(p.monto)}</td>
+          <td class="td-id">${p.observacion || '—'}</td>
+          <td class="td-acc"><button class="btn-editar" data-pid="${p.id}">Editar</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+/* ── Modal pago ── */
+window.abrirModalNuevoPago = function() {
+  pagoModo = 'nuevo'; pagoEditId = null; pagoEditData = null;
+  $('mp-titulo').textContent = 'Nuevo pago';
+  syncSelectClientes('mp-cliente');
+  $('mp-cliente').value = '';
+  $('mp-monto').value = '';
+  $('mp-fecha').value = hoy();
+  $('mp-obs').value = '';
+  $('btn-mp-guardar').textContent = 'Guardar';
+  $('modal-pago-overlay').classList.remove('hidden');
+  setTimeout(() => $('mp-cliente').focus(), 100);
+};
+
+window.abrirModalEditarPago = function(id) {
+  const p = pagosCache.find(x => x.id === id);
+  if (!p) return;
+  pagoModo = 'editar'; pagoEditId = id; pagoEditData = p;
+  $('mp-titulo').textContent = 'Editar pago';
+  syncSelectClientes('mp-cliente');
+  $('mp-cliente').value = p.clienteId || '';
+  $('mp-monto').value   = p.monto || 0;
+  $('mp-fecha').value   = p.fecha?.toDate ? p.fecha.toDate().toISOString().split('T')[0] : hoy();
+  $('mp-obs').value     = p.observacion || '';
+  $('btn-mp-guardar').textContent = 'Actualizar';
+  $('modal-pago-overlay').classList.remove('hidden');
+};
+
+window.cerrarModalPago = () => $('modal-pago-overlay').classList.add('hidden');
+window.cerrarModalPagoSiOverlay = e => { if (e.target === $('modal-pago-overlay')) cerrarModalPago(); };
+
+window.guardarModalPago = async function() {
+  const sel = $('mp-cliente');
+  const clienteId     = sel.value;
+  const clienteNombre = sel.options[sel.selectedIndex]?.dataset.nombre || '';
+  const monto = parseFloat($('mp-monto').value);
+  const fecha = $('mp-fecha').value;
+
+  if (!clienteId) { toast('Seleccioná un cliente', 'err'); return; }
+  if (!monto || monto <= 0) { toast('El monto debe ser mayor a 0', 'err'); return; }
+  if (!fecha)     { toast('La fecha es obligatoria', 'err'); return; }
+
+  const btn = $('btn-mp-guardar');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+
+  try {
+    if (pagoModo === 'nuevo') {
+      await addDoc(collection(db,'pagos'), {
+        clienteId, clienteNombre, monto,
+        fecha: toTs(fecha),
+        observacion: $('mp-obs').value.trim()
+      });
+      await updateDoc(doc(db,'clientes',clienteId), { saldoPendiente: increment(-monto) });
+      toast('Pago guardado ✓');
+    } else {
+      const delta = monto - (pagoEditData.monto || 0);
+      await updateDoc(doc(db,'pagos', pagoEditId), {
+        clienteId, clienteNombre, monto,
+        fecha: toTs(fecha),
+        observacion: $('mp-obs').value.trim()
+      });
+      if (delta !== 0 || clienteId !== pagoEditData.clienteId) {
+        if (clienteId !== pagoEditData.clienteId) {
+          if (pagoEditData.clienteId)
+            await updateDoc(doc(db,'clientes',pagoEditData.clienteId), { saldoPendiente: increment(pagoEditData.monto||0) });
+          await updateDoc(doc(db,'clientes',clienteId), { saldoPendiente: increment(-monto) });
+        } else {
+          await updateDoc(doc(db,'clientes',clienteId), { saldoPendiente: increment(-delta) });
+        }
+      }
+      toast('Pago actualizado ✓');
+    }
+    cerrarModalPago();
+    await cargarPagos();
+    await cargarClientes();
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+  btn.disabled = false;
+  btn.textContent = pagoModo === 'nuevo' ? 'Guardar' : 'Actualizar';
+};
+
+/* ══════════════════════════
+   COMPRAS
+══════════════════════════ */
+async function cargarCompras() {
+  $('lista-compras').innerHTML = '<div class="cargando">Cargando...</div>';
+  try {
+    const snap = await getDocs(query(collection(db,'compras'), orderBy('fecha','desc'), limit(30)));
+    if (snap.empty) { $('lista-compras').innerHTML = '<div class="empty">Sin compras registradas</div>'; return; }
+    $('lista-compras').innerHTML = snap.docs.map(d => {
+      const c = d.data();
+      return `
+        <div class="lista-item">
+          <div class="item-main">
+            <div class="item-nombre">${c.observacion || '—'}</div>
+            <div class="item-sub">${fmtFecha(c.fecha)}${c.proveedor ? ' · ' + c.proveedor : ''}</div>
+          </div>
+          <div class="item-right">
+            <div class="item-monto" style="color:var(--compras)">${fmtGs(c.monto)}</div>
+          </div>
+        </div>`;
+    }).join('');
+  } catch(e) { $('lista-compras').innerHTML = `<div class="empty">Error: ${e.message}</div>`; }
+}
+
+window.guardarCompra = async () => {
+  const fecha = $('co-fecha').value;
+  const monto = parseFloat($('co-monto').value);
+  const obs   = $('co-obs').value.trim();
+
+  if (!fecha) { toast('La fecha es obligatoria', 'err'); return; }
+  if (!monto || monto <= 0) { toast('El monto debe ser mayor a 0', 'err'); return; }
+  if (!obs)   { toast('La observación es obligatoria', 'err'); return; }
+
+  disBtn('btn-co', 'Guardando...');
+  try {
+    await addDoc(collection(db,'compras'), {
+      fecha: toTs(fecha), monto, observacion: obs,
+      proveedor: $('co-prov').value.trim()
+    });
+    $('co-monto').value = ''; $('co-obs').value = '';
+    $('co-prov').value = ''; $('co-fecha').value = hoy();
+    toast('Compra guardada ✓');
+    await cargarCompras();
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+  enBtn('btn-co', 'Guardar compra');
+};
+
+/* ══════════════════════════
+   EGRESOS
+══════════════════════════ */
+async function cargarEgresos() {
+  $('lista-egresos').innerHTML = '<div class="cargando">Cargando...</div>';
+  try {
+    const snap = await getDocs(query(collection(db,'egresos'), orderBy('fecha','desc'), limit(30)));
+    if (snap.empty) { $('lista-egresos').innerHTML = '<div class="empty">Sin egresos registrados</div>'; return; }
+    $('lista-egresos').innerHTML = snap.docs.map(d => {
+      const e = d.data();
+      return `
+        <div class="lista-item">
+          <div class="item-main">
+            <div class="item-nombre">${e.descripcion || '—'}</div>
+            <div class="item-sub">${fmtFecha(e.fecha)}${e.categoria ? ' · ' + e.categoria : ''}</div>
+          </div>
+          <div class="item-right">
+            <div class="item-monto" style="color:var(--egresos)">${fmtGs(e.monto)}</div>
+          </div>
+        </div>`;
+    }).join('');
+  } catch(e) { $('lista-egresos').innerHTML = `<div class="empty">Error: ${e.message}</div>`; }
+}
+
+window.guardarEgreso = async () => {
+  const fecha = $('e-fecha').value;
+  const monto = parseFloat($('e-monto').value);
+  const desc  = $('e-desc').value.trim();
+
+  if (!fecha) { toast('La fecha es obligatoria', 'err'); return; }
+  if (!monto || monto <= 0) { toast('El monto debe ser mayor a 0', 'err'); return; }
+  if (!desc)  { toast('La descripción es obligatoria', 'err'); return; }
+
+  disBtn('btn-e', 'Guardando...');
+  try {
+    await addDoc(collection(db,'egresos'), {
+      fecha: toTs(fecha), monto, descripcion: desc,
+      categoria: $('e-cat').value.trim()
+    });
+    $('e-monto').value = ''; $('e-desc').value = '';
+    $('e-cat').value = ''; $('e-fecha').value = hoy();
+    toast('Egreso guardado ✓');
+    await cargarEgresos();
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+  enBtn('btn-e', 'Guardar egreso');
+};
+
+/* ── INIT ── */
+$('mv-fecha').value = hoy();
+$('mp-fecha').value = hoy();
+$('co-fecha').value = hoy();
+$('e-fecha').value = hoy();
+cargarClientes();
+
+// Cerrar modales con Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    cerrarModal();
+    cerrarModalVenta();
+    cerrarModalPago();
+  }
+});
+
+// ── Botones Editar: tolerancia de movimiento ──
+// Resuelve el problema de que click se pierde si el mouse se mueve
+// mientras el botón está apretado. Funciona también en touch/mobile.
+document.addEventListener('pointerdown', e => {
+  const btn = e.target.closest('.btn-editar');
+  if (!btn) return;
+
+  const startX = e.clientX;
+  const startY = e.clientY;
+
+  const onUp = ev => {
+    document.removeEventListener('pointerup', onUp);
+    document.removeEventListener('pointercancel', onUp);
+    const dist = Math.abs(ev.clientX - startX) + Math.abs(ev.clientY - startY);
+    if (dist < 12) {
+      if (btn.dataset.id)  abrirModalEditar(btn.dataset.id);
+      if (btn.dataset.vid) abrirModalEditarVenta(btn.dataset.vid);
+      if (btn.dataset.pid) abrirModalEditarPago(btn.dataset.pid);
+    }
+  };
+
+  document.addEventListener('pointerup', onUp);
+  document.addEventListener('pointercancel', onUp);
+});
+</script>
+</body>
+</html>
