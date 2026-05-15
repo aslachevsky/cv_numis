@@ -213,6 +213,18 @@
     .badge-pendiente { background: rgba(201,162,39,.12); color: #d4aa35; border: 1px solid rgba(201,162,39,.25); }
     .badge-pagado    { background: rgba(39,174,96,.12);  color: #5dde8a; border: 1px solid rgba(39,174,96,.25); }
     .badge-enviado   { background: rgba(74,144,217,.12); color: #7ab8f5; border: 1px solid rgba(74,144,217,.25); }
+    .badge-anulado   { background: rgba(142,68,173,.12); color: #b87cda; border: 1px solid rgba(142,68,173,.25); }
+
+    .btn-anular {
+      padding: 5px 10px; border: 1px solid rgba(192,57,43,.4); border-radius: 6px;
+      background: transparent; font-size: 11px; font-weight: 600;
+      color: #c0392b; cursor: pointer; margin-right: 4px;
+      touch-action: manipulation; user-select: none; -webkit-user-select: none;
+      font-family: 'Poppins', sans-serif; transition: all .15s;
+    }
+    .btn-anular:hover  { border-color: var(--primary); background: rgba(192,57,43,.1); }
+    .btn-anular:active { background: rgba(192,57,43,.2); }
+    .btn-anular:disabled { opacity: .45; cursor: not-allowed; }
 
     /* ─── Saldos ─── */
     .saldo-pos  { color: #e07070; }
@@ -551,6 +563,7 @@
         <option value="">Todos</option>
         <option value="pagado">Pagado</option>
         <option value="enviado">Enviado</option>
+        <option value="anulado">Anulado</option>
       </select>
       <button class="btn-nuevo" onclick="abrirModalNuevaVenta()">+ Nueva</button>
     </div>
@@ -584,7 +597,7 @@
       <label>Monto (₲) *</label>
       <input type="number" id="mv-monto" placeholder="0" min="0" step="1000">
     </div>
-    <div class="form-group">
+    <div class="form-group" id="mv-estado-grupo">
       <label>Estado</label>
       <div class="select-wrap">
         <select id="mv-estado">
@@ -761,7 +774,7 @@ const fmtFecha = ts => {
 
 const fmtGs = n => '₲ ' + Math.round(n || 0).toLocaleString('es-PY');
 
-const toTs = s => { const [y,m,d] = s.split('-'); return Timestamp.fromDate(new Date(y, m-1, d)); };
+const toTs = s => Timestamp.fromDate(new Date(s + 'T12:00:00'));
 
 const $ = id => document.getElementById(id);
 
@@ -1000,8 +1013,10 @@ let ventaEditData = null;
 async function cargarVentas() {
   $('lista-ventas').innerHTML = '<div class="cargando">Cargando...</div>';
   try {
-    const snap = await getDocs(query(collection(db,'ventas'), orderBy('fecha','desc'), limit(500)));
-    ventasCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const snap = await getDocs(collection(db,'ventas'));
+    ventasCache = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.fecha?.seconds ?? 0) - (a.fecha?.seconds ?? 0));
     filtrarVentas();
   } catch(e) { $('lista-ventas').innerHTML = `<div class="empty">Error: ${e.message}</div>`; }
 }
@@ -1011,13 +1026,9 @@ window.filtrarVentas = function() {
   const estado    = $('v-fil-estado')?.value ?? 'pendiente';
   const el  = $('lista-ventas');
   const cnt = $('v-count');
-  if (!clienteId) {
-    if (cnt) cnt.textContent = '';
-    el.innerHTML = '<div class="empty" style="padding:32px 0">Seleccioná un cliente para ver sus ventas</div>';
-    return;
-  }
+
   let lista = ventasCache.filter(v => {
-    const okCliente = v.clienteId === clienteId;
+    const okCliente = !clienteId || v.clienteId === clienteId;
     const okEstado  = !estado || v.estado === estado;
     return okCliente && okEstado;
   });
@@ -1041,9 +1052,12 @@ function renderTablaVentas(lista) {
             ${v.descripcion ? `<div class="td-id">${v.descripcion}</div>` : ''}
           </td>
           <td class="td-id" style="white-space:nowrap">${fmtFecha(v.fecha)}</td>
-          <td class="td-saldo">${fmtGs(v.monto)}</td>
+          <td class="td-saldo" style="${v.estado==='anulado'?'text-decoration:line-through;opacity:.5':''}">${fmtGs(v.monto)}</td>
           <td><span class="badge badge-${v.estado}">${v.estado}</span></td>
-          <td class="td-acc"><button class="btn-editar" data-vid="${v.id}">Editar</button></td>
+          <td class="td-acc">
+            ${v.estado !== 'anulado' ? `<button class="btn-anular" data-anular="${v.id}" onclick="anularVenta('${v.id}')">Anular</button>` : ''}
+            <button class="btn-editar" data-vid="${v.id}">Editar</button>
+          </td>
         </tr>`).join('')}
       </tbody>
     </table>`;
@@ -1062,6 +1076,7 @@ window.abrirModalNuevaVenta = function() {
   $('mv-cliente').value = $('v-fil-cliente')?.value || '';
   $('mv-desc').value = ''; $('mv-fecha').value = hoy();
   $('mv-monto').value = ''; $('mv-estado').value = 'pendiente';
+  $('mv-estado-grupo').style.display = 'none';
   $('btn-mv-guardar').textContent = 'Guardar';
   $('modal-venta-overlay').classList.remove('hidden');
   setTimeout(() => $('mv-cliente').focus(), 100);
@@ -1078,6 +1093,7 @@ window.abrirModalEditarVenta = function(id) {
   $('mv-fecha').value   = v.fecha?.toDate ? v.fecha.toDate().toISOString().split('T')[0] : hoy();
   $('mv-monto').value   = v.monto || 0;
   $('mv-estado').value  = v.estado || 'pendiente';
+  $('mv-estado-grupo').style.display = 'block';
   $('btn-mv-guardar').textContent = 'Actualizar';
   $('modal-venta-overlay').classList.remove('hidden');
 };
@@ -1091,7 +1107,8 @@ window.guardarModalVenta = async function() {
   const clienteNombre = sel.options[sel.selectedIndex]?.dataset.nombre || '';
   const fecha  = $('mv-fecha').value;
   const monto  = parseFloat($('mv-monto').value);
-  const estado = $('mv-estado').value;
+  const esNuevo = ventaModo === 'nuevo';
+  const estado = esNuevo ? 'pendiente' : $('mv-estado').value;
 
   if (!clienteId) { toast('Seleccioná un cliente', 'err'); return; }
   if (!fecha)     { toast('La fecha es obligatoria', 'err'); return; }
@@ -1100,38 +1117,76 @@ window.guardarModalVenta = async function() {
   const btn = $('btn-mv-guardar');
   btn.disabled = true; btn.textContent = 'Guardando...';
   try {
-    if (ventaModo === 'nuevo') {
+    if (esNuevo) {
       await addDoc(collection(db,'ventas'), {
         clienteId, clienteNombre,
         descripcion: $('mv-desc').value.trim(),
-        fecha: toTs(fecha), monto, estado
+        fecha: toTs(fecha), monto, estado: 'pendiente'
       });
       await updateDoc(doc(db,'clientes',clienteId), { saldoPendiente: increment(monto) });
       toast('Venta guardada ✓');
     } else {
-      const delta = monto - (ventaEditData.monto || 0);
+      const oldMonto     = ventaEditData.monto   || 0;
+      const oldEstado    = ventaEditData.estado  || 'pendiente';
+      const oldClienteId = ventaEditData.clienteId;
+
+      const oldAfectaSaldo = oldEstado !== 'pagado';
+      const newAfectaSaldo = estado    !== 'pagado';
+
       await updateDoc(doc(db,'ventas', ventaEditId), {
         clienteId, clienteNombre,
         descripcion: $('mv-desc').value.trim(),
         fecha: toTs(fecha), monto, estado
       });
-      if (delta !== 0 || clienteId !== ventaEditData.clienteId) {
-        if (clienteId !== ventaEditData.clienteId) {
-          if (ventaEditData.clienteId)
-            await updateDoc(doc(db,'clientes',ventaEditData.clienteId), { saldoPendiente: increment(-(ventaEditData.monto||0)) });
+
+      if (clienteId !== oldClienteId) {
+        if (oldClienteId && oldAfectaSaldo)
+          await updateDoc(doc(db,'clientes',oldClienteId), { saldoPendiente: increment(-oldMonto) });
+        if (newAfectaSaldo)
           await updateDoc(doc(db,'clientes',clienteId), { saldoPendiente: increment(monto) });
-        } else {
+      } else {
+        const efectoViejo = oldAfectaSaldo ? oldMonto : 0;
+        const efectoNuevo = newAfectaSaldo ? monto    : 0;
+        const delta = efectoNuevo - efectoViejo;
+        if (delta !== 0)
           await updateDoc(doc(db,'clientes',clienteId), { saldoPendiente: increment(delta) });
-        }
       }
       toast('Venta actualizada ✓');
     }
     cerrarModalVenta();
-    await cargarVentas();
     await cargarClientes();
+    await cargarVentas();
+    // Apuntar el filtro al cliente guardado para que la venta sea visible
+    if (esNuevo) {
+      const selCliente = $('v-fil-cliente');
+      if (selCliente) selCliente.value = clienteId;
+      const selEstado = $('v-fil-estado');
+      if (selEstado) selEstado.value = 'pendiente';
+      filtrarVentas();
+    }
   } catch(e) { toast('Error: ' + e.message, 'err'); }
   btn.disabled = false;
-  btn.textContent = ventaModo === 'nuevo' ? 'Guardar' : 'Actualizar';
+  btn.textContent = esNuevo ? 'Guardar' : 'Actualizar';
+};
+
+window.anularVenta = async function(id) {
+  const v = ventasCache.find(x => x.id === id);
+  if (!v || v.estado === 'anulado') return;
+  const btn = document.querySelector(`[data-anular="${id}"]`);
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  try {
+    await updateDoc(doc(db,'ventas', id), { estado: 'anulado' });
+    // Solo bajar saldo si la venta afectaba el saldo (pendiente o enviado)
+    if (v.estado !== 'pagado' && v.clienteId) {
+      await updateDoc(doc(db,'clientes', v.clienteId), { saldoPendiente: increment(-(v.monto || 0)) });
+    }
+    toast('Venta anulada ✓');
+    await cargarClientes();
+    await cargarVentas();
+  } catch(e) {
+    toast('Error: ' + e.message, 'err');
+    if (btn) { btn.disabled = false; btn.textContent = 'Anular'; }
+  }
 };
 
 /* ══════════════════════════

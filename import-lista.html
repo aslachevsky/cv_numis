@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cargar Lista — ControlVentas</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f4f6f8;
+      min-height: 100vh;
+      padding: 24px 16px 40px;
+    }
+    .back-link {
+      display: inline-block; margin-bottom: 16px;
+      font-size: 13px; color: #888; text-decoration: none;
+    }
+    .back-link:hover { color: #C0392B; }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 28px;
+      max-width: 620px;
+      margin: 0 auto 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.07);
+    }
+    h1 { font-size: 20px; color: #1a1a1a; margin-bottom: 4px; }
+    .sub { font-size: 13px; color: #888; margin-bottom: 24px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #444; margin-bottom: 6px; }
+    .campo { margin-bottom: 20px; }
+    input[type=text], input[type=date], textarea, select {
+      width: 100%;
+      border: 1px solid #d0d5dd;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .15s;
+      color: #1a1a1a;
+      background: #fff;
+    }
+    input[type=text]:focus, textarea:focus, select:focus { border-color: #C0392B; box-shadow: 0 0 0 3px rgba(192,57,43,.08); }
+    textarea { resize: vertical; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.7; }
+    small { font-size: 11px; color: #aaa; margin-top: 5px; display: block; }
+
+    .campo-row { display: flex; gap: 16px; }
+    .campo-row .campo { flex: 1; }
+
+    /* Stats */
+    .resumen { background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
+    .resumen-titulo { font-size: 12px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 12px; }
+    .stats { display: flex; gap: 10px; flex-wrap: wrap; }
+    .stat { flex: 1; min-width: 90px; background: #fff; border-radius: 8px; padding: 12px 10px; text-align: center; border: 1px solid #e5e7eb; }
+    .stat-num { font-size: 22px; font-weight: 800; color: #C0392B; line-height: 1; }
+    .stat-num.gs { font-size: 14px; font-weight: 700; padding-top: 4px; }
+    .stat-num.verde { color: #27AE60; }
+    .stat-num.rojo { color: #e74c3c; }
+    .stat-lbl { font-size: 11px; color: #888; margin-top: 4px; }
+
+    /* Cliente chip */
+    .cliente-chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 20px; padding: 5px 14px; font-size: 12px; font-weight: 600; margin-bottom: 16px; }
+    .existente { background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; }
+    .nuevo-chip { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+
+    /* Preview table */
+    .preview-wrap { max-height: 280px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { background: #f4f6f8; padding: 8px 10px; text-align: left; font-weight: 700; color: #444; position: sticky; top: 0; border-bottom: 1px solid #e5e7eb; }
+    td { padding: 7px 10px; border-bottom: 1px solid #f0f0f0; color: #333; }
+    tr:last-child td { border-bottom: none; }
+    tr.fila-error td { background: #fff5f5; }
+    td.num { text-align: right; font-weight: 700; color: #C0392B; }
+    td.n { color: #aaa; font-size: 11px; }
+    td.err-txt { color: #e74c3c; font-style: italic; font-size: 11px; }
+
+    /* Divider */
+    .sep { border: none; border-top: 1px solid #f0f0f0; margin: 20px 0; }
+
+    /* Buttons */
+    .btn { width: 100%; padding: 13px; border: none; border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; transition: background .15s, opacity .15s; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-primary { background: #C0392B; color: #fff; margin-bottom: 10px; }
+    .btn-primary:hover:not(:disabled) { background: #922B21; }
+    .btn-sec { background: #f4f6f8; color: #444; border: 1px solid #e5e7eb; margin-bottom: 10px; }
+    .btn-sec:hover:not(:disabled) { background: #e9ecef; }
+    .btn-outline { background: transparent; color: #C0392B; border: 1.5px solid #C0392B; margin-bottom: 0; }
+    .btn-outline:hover:not(:disabled) { background: #fff5f5; }
+
+    /* Progress */
+    .progreso-wrap { display: none; margin-bottom: 20px; }
+    .progreso-label { font-size: 13px; color: #555; margin-bottom: 8px; display: flex; justify-content: space-between; }
+    .barra-bg { background: #e5e7eb; border-radius: 20px; height: 10px; overflow: hidden; }
+    .barra { background: #C0392B; height: 100%; border-radius: 20px; width: 0; transition: width .3s; }
+    .progreso-detalle { font-size: 11px; color: #aaa; margin-top: 6px; }
+
+    /* Result */
+    .resultado { padding: 14px; border-radius: 8px; font-size: 13px; display: none; margin-bottom: 14px; line-height: 1.7; }
+    .resultado.ok  { background: #eafaf1; color: #1e8449; border: 1px solid #a9dfbf; }
+    .resultado.err { background: #fdedec; color: #922b21; border: 1px solid #f5b7b1; }
+
+    .aviso { background: #fffbf0; border: 1px solid #f0c040; border-radius: 8px; padding: 12px 14px; font-size: 12px; color: #7d6000; margin-bottom: 20px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+
+<div style="max-width:620px; margin:0 auto">
+  <a href="index.html" class="back-link">← Volver a ControlVentas</a>
+</div>
+
+<div class="card">
+  <h1>Cargar lista de items</h1>
+  <p class="sub">Importar ventas pendientes para un cliente desde una lista copiada</p>
+
+  <div class="aviso">
+    ℹ Pegá la lista con el formato <strong>descripción [TAB] monto</strong> en cada línea.
+    Se crearán ventas en estado <strong>pendiente</strong> y se sumará el total al saldo del cliente.
+  </div>
+
+  <!-- Nombre cliente -->
+  <div class="campo">
+    <label for="nombreCliente">Nombre del cliente</label>
+    <input type="text" id="nombreCliente" placeholder="Ej: Juan Pérez" autocomplete="off" />
+    <small>Si el cliente no existe, se creará automáticamente.</small>
+  </div>
+
+  <!-- Fecha y factor en fila -->
+  <div class="campo-row">
+    <div class="campo">
+      <label for="fechaVenta">Fecha de las ventas</label>
+      <input type="date" id="fechaVenta" />
+    </div>
+    <div class="campo">
+      <label for="factor">Multiplicar montos por</label>
+      <select id="factor">
+        <option value="1">× 1 — guaraníes exactos</option>
+        <option value="1000" selected>× 1.000 — miles de ₲</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Lista -->
+  <div class="campo">
+    <label for="listaTexto">Lista de items</label>
+    <textarea id="listaTexto" rows="12" placeholder="Pegá la lista aquí, por ejemplo:
+
+5 pfg	35
+2 1/2groshcen	70
+liberia	35
+Set USA	600
+Islas Salomon	100"></textarea>
+    <small>Cada línea: descripción [TAB] monto — las líneas vacías o sin monto se ignoran.</small>
+  </div>
+
+  <!-- Botón previsualizar -->
+  <button class="btn btn-sec" id="btnPreview" onclick="previsualizar()">
+    Previsualizar lista
+  </button>
+
+  <!-- Sección preview (oculta al inicio) -->
+  <div id="seccionPreview" style="display:none">
+    <hr class="sep">
+
+    <div id="clienteChip"></div>
+
+    <!-- Stats -->
+    <div class="resumen">
+      <div class="resumen-titulo">Resumen</div>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-num verde" id="statItems">0</div>
+          <div class="stat-lbl">Items válidos</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num rojo" id="statErrores">0</div>
+          <div class="stat-lbl">Sin monto</div>
+        </div>
+        <div class="stat" style="min-width:140px">
+          <div class="stat-num gs" id="statTotal">₲ 0</div>
+          <div class="stat-lbl">Total a sumar</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla preview -->
+    <div class="preview-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:32px">#</th>
+            <th>Descripción</th>
+            <th style="text-align:right; white-space:nowrap">Monto</th>
+          </tr>
+        </thead>
+        <tbody id="previewBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="progreso-wrap" id="progresoWrap">
+      <div class="progreso-label">
+        <span id="progresoTxt">Importando...</span>
+        <span id="progresoPct">0%</span>
+      </div>
+      <div class="barra-bg"><div class="barra" id="barra"></div></div>
+      <div class="progreso-detalle" id="progresoDetalle"></div>
+    </div>
+
+    <!-- Resultado -->
+    <div class="resultado" id="resultado"></div>
+
+    <!-- Botones de acción -->
+    <button class="btn btn-primary" id="btnImportar" onclick="importar()">
+      Importar a ControlVentas
+    </button>
+    <button class="btn btn-outline" id="btnNuevo" onclick="reiniciar()" style="display:none">
+      Cargar otra lista
+    </button>
+    <button class="btn btn-sec" id="btnCancelar" onclick="cancelarPreview()">
+      Editar lista
+    </button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import {
+  getFirestore, collection, addDoc, getDocs, doc, updateDoc,
+  query, where, writeBatch, Timestamp, increment
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey:            "AIzaSyBOB3EZQQ8jKOyieOqt5_EebUn8ITknAfY",
+  authDomain:        "helio-produce.firebaseapp.com",
+  projectId:         "helio-produce",
+  storageBucket:     "helio-produce.firebasestorage.app",
+  messagingSenderId: "217860282947",
+  appId:             "1:217860282947:web:de5d1c000d2ff0c8efd2f6"
+});
+const db = getFirestore(app, 'andyslapry');
+
+const $ = id => document.getElementById(id);
+const fmtGs = n => '₲ ' + Math.round(n).toLocaleString('es-PY');
+
+// Set today as default date
+const hoy = () => new Date().toISOString().split('T')[0];
+document.getElementById('fechaVenta').value = hoy();
+
+let itemsParseados   = [];
+let clienteEncontrado = null; // { id, nombre } o null si es nuevo
+
+/* ── PARSEAR UNA LÍNEA ── */
+function parsearLinea(linea, idx) {
+  const l = linea.trim();
+  if (!l) return null;
+
+  let descripcion = '';
+  let monto = 0;
+  let ok = false;
+
+  // Intento 1: separar por tab
+  if (l.includes('\t')) {
+    const partes = l.split('\t');
+    descripcion  = partes[0].trim();
+    const ultimo = partes[partes.length - 1].trim().replace(/[^\d.,]/g, '').replace(',', '.');
+    monto = parseFloat(ultimo);
+    ok = descripcion.length > 0 && !isNaN(monto) && monto > 0;
+  }
+
+  // Intento 2: separar por múltiples espacios
+  if (!ok) {
+    const m = l.match(/^(.+?)\s{2,}(\d+(?:[.,]\d+)?)$/);
+    if (m) {
+      descripcion = m[1].trim();
+      monto = parseFloat(m[2].replace(',', '.'));
+      ok = descripcion.length > 0 && !isNaN(monto) && monto > 0;
+    }
+  }
+
+  // Intento 3: número al final separado por un espacio (sin ambigüedad)
+  if (!ok) {
+    const m = l.match(/^(.+)\s+(\d+(?:[.,]\d+)?)$/);
+    if (m) {
+      descripcion = m[1].trim();
+      monto = parseFloat(m[2].replace(',', '.'));
+      ok = descripcion.length > 0 && !isNaN(monto) && monto > 0;
+    }
+  }
+
+  if (!ok) {
+    return { lineaNum: idx + 1, descripcion: l, monto: 0, montoFinal: 0, ok: false };
+  }
+
+  return { lineaNum: idx + 1, descripcion, monto, montoFinal: 0, ok: true };
+}
+
+/* ── PREVISUALIZAR ── */
+window.previsualizar = async function() {
+  const nombre = $('nombreCliente').value.trim();
+  const texto  = $('listaTexto').value;
+  const factor = parseInt($('factor').value) || 1;
+  const fecha  = $('fechaVenta').value;
+
+  if (!nombre) {
+    $('nombreCliente').focus();
+    $('nombreCliente').style.borderColor = '#e74c3c';
+    setTimeout(() => $('nombreCliente').style.borderColor = '', 2000);
+    return;
+  }
+  if (!texto.trim()) {
+    $('listaTexto').focus();
+    return;
+  }
+
+  const lineas = texto.split('\n');
+  itemsParseados = lineas.map((l, i) => parsearLinea(l, i)).filter(Boolean);
+
+  // Aplicar factor a los válidos
+  itemsParseados.forEach(item => {
+    item.montoFinal = item.ok ? item.monto * factor : 0;
+  });
+
+  const validos    = itemsParseados.filter(i => i.ok);
+  const conError   = itemsParseados.filter(i => !i.ok);
+  const totalMonto = validos.reduce((a, i) => a + i.montoFinal, 0);
+
+  // Buscar cliente en Firestore
+  clienteEncontrado = null;
+  try {
+    const snap = await getDocs(query(collection(db, 'clientes'), where('nombre', '==', nombre)));
+    if (!snap.empty) {
+      clienteEncontrado = { id: snap.docs[0].id, nombre: snap.docs[0].data().nombre };
+    } else {
+      // Búsqueda insensible a mayúsculas sobre todos los clientes
+      const all = await getDocs(collection(db, 'clientes'));
+      const match = all.docs.find(d =>
+        (d.data().nombre || '').trim().toLowerCase() === nombre.toLowerCase()
+      );
+      if (match) clienteEncontrado = { id: match.id, nombre: match.data().nombre };
+    }
+  } catch (e) {
+    console.warn('Error al buscar cliente:', e);
+  }
+
+  // Chip de cliente
+  if (clienteEncontrado) {
+    $('clienteChip').innerHTML =
+      `<div class="cliente-chip existente">👤 Cliente existente: <strong>${clienteEncontrado.nombre}</strong></div>`;
+  } else {
+    $('clienteChip').innerHTML =
+      `<div class="cliente-chip nuevo-chip">✨ Cliente nuevo: <strong>${nombre}</strong></div>`;
+  }
+
+  // Stats
+  $('statItems').textContent    = validos.length;
+  $('statErrores').textContent  = conError.length;
+  $('statTotal').textContent    = fmtGs(totalMonto);
+
+  // Tabla
+  $('previewBody').innerHTML = itemsParseados.map(item => {
+    if (!item.ok) {
+      return `<tr class="fila-error">
+        <td class="n">${item.lineaNum}</td>
+        <td class="err-txt" colspan="2">⚠ ${item.descripcion}</td>
+      </tr>`;
+    }
+    return `<tr>
+      <td class="n">${item.lineaNum}</td>
+      <td>${item.descripcion}</td>
+      <td class="num">${fmtGs(item.montoFinal)}</td>
+    </tr>`;
+  }).join('');
+
+  $('seccionPreview').style.display = 'block';
+  $('btnImportar').style.display = validos.length > 0 ? 'block' : 'none';
+  $('btnCancelar').style.display = 'block';
+  $('btnNuevo').style.display    = 'none';
+  $('resultado').style.display   = 'none';
+  $('progresoWrap').style.display= 'none';
+
+  // Scroll a la preview
+  $('seccionPreview').scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+/* ── IMPORTAR ── */
+window.importar = async function() {
+  const nombre = $('nombreCliente').value.trim();
+  const fecha  = $('fechaVenta').value;
+  const validos = itemsParseados.filter(i => i.ok);
+  if (!validos.length) return;
+
+  const btnImp = $('btnImportar');
+  const btnCan = $('btnCancelar');
+  btnImp.disabled = true;
+  btnImp.textContent = 'Importando...';
+  btnCan.style.display = 'none';
+  $('progresoWrap').style.display = 'block';
+  $('resultado').style.display    = 'none';
+
+  try {
+    // 1. Obtener o crear cliente
+    let clienteId;
+    let clienteNombre;
+
+    if (clienteEncontrado) {
+      clienteId     = clienteEncontrado.id;
+      clienteNombre = clienteEncontrado.nombre;
+    } else {
+      const ref = await addDoc(collection(db, 'clientes'), {
+        nombre, identificacion: '', telefono: '', email: '', direccion: '',
+        saldoPendiente: 0
+      });
+      clienteId     = ref.id;
+      clienteNombre = nombre;
+    }
+
+    // 2. Preparar ops de ventas
+    const fechaTs = fecha
+      ? Timestamp.fromDate(new Date(fecha + 'T12:00:00'))
+      : Timestamp.now();
+
+    const totalMonto = validos.reduce((a, i) => a + i.montoFinal, 0);
+    const ops = validos.map(item => ({
+      ref : doc(collection(db, 'ventas')),
+      data: {
+        clienteId,
+        clienteNombre,
+        descripcion: item.descripcion,
+        fecha:       fechaTs,
+        monto:       item.montoFinal,
+        estado:      'pendiente'
+      }
+    }));
+
+    // 3. Escribir en lotes (máx 490 por batch)
+    const SUB = 490;
+    let creados = 0;
+    for (let s = 0; s < ops.length; s += SUB) {
+      const batch = writeBatch(db);
+      const slice = ops.slice(s, s + SUB);
+      slice.forEach(op => batch.set(op.ref, op.data));
+      await batch.commit();
+      creados += slice.length;
+
+      const pct = Math.round((creados / ops.length) * 100);
+      $('barra').style.width          = pct + '%';
+      $('progresoPct').textContent    = pct + '%';
+      $('progresoDetalle').textContent = `${creados} de ${ops.length} ventas`;
+      await new Promise(r => setTimeout(r, 30));
+    }
+
+    // 4. Actualizar saldo del cliente
+    await updateDoc(doc(db, 'clientes', clienteId), {
+      saldoPendiente: increment(totalMonto)
+    });
+
+    $('progresoTxt').textContent = 'Completado';
+    $('barra').style.width       = '100%';
+
+    const res = $('resultado');
+    res.className = 'resultado ok';
+    res.innerHTML = `✓ Importación completada.<br>
+      <strong>${creados} venta${creados !== 1 ? 's' : ''}</strong> creadas para
+      <strong>${clienteNombre}</strong>.<br>
+      Saldo incrementado en <strong>${fmtGs(totalMonto)}</strong>.`;
+    res.style.display = 'block';
+
+    btnImp.style.display        = 'none';
+    $('btnNuevo').style.display = 'block';
+
+  } catch (e) {
+    const res = $('resultado');
+    res.className = 'resultado err';
+    res.innerHTML = `✗ Error al importar: ${e.message}`;
+    res.style.display = 'block';
+    btnImp.disabled   = false;
+    btnImp.textContent = 'Importar a ControlVentas';
+    $('btnCancelar').style.display = 'block';
+  }
+};
+
+/* ── CANCELAR PREVIEW ── */
+window.cancelarPreview = function() {
+  $('seccionPreview').style.display = 'none';
+  itemsParseados    = [];
+  clienteEncontrado = null;
+};
+
+/* ── REINICIAR TODO ── */
+window.reiniciar = function() {
+  itemsParseados    = [];
+  clienteEncontrado = null;
+  $('nombreCliente').value = '';
+  $('listaTexto').value    = '';
+  $('fechaVenta').value    = hoy();
+  $('factor').value        = '1000';
+  $('seccionPreview').style.display  = 'none';
+  $('progresoWrap').style.display    = 'none';
+  $('resultado').style.display       = 'none';
+  $('btnImportar').disabled          = false;
+  $('btnImportar').textContent       = 'Importar a ControlVentas';
+  $('btnImportar').style.display     = 'block';
+  $('btnNuevo').style.display        = 'none';
+  $('btnCancelar').style.display     = 'block';
+  $('barra').style.width             = '0';
+  $('nombreCliente').focus();
+};
+</script>
+</body>
+</html>
