@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "gimp-inkscape": {
+      "source": "ramon-webdevpro-nl/claude-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gimp-inkscape/SKILL.md",
+      "computedHash": "ce6c45699b0f7a30ae959c18ceb727e36624638b2c0ec218be4dcad31d449c0a"
+    }
+  }
+}

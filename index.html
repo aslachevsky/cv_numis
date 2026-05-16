@@ -40,6 +40,43 @@
       padding-bottom: 72px;
     }
 
+    /* ─── Login overlay ─── */
+    #login-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    #login-overlay.hidden { display: none; }
+    .login-box {
+      width: 100%; max-width: 360px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px 24px 28px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.5);
+      display: flex; flex-direction: column; align-items: center; gap: 0;
+    }
+    .login-logo-wrap {
+      width: 64px; height: 64px; border-radius: 50%;
+      overflow: hidden; border: 2px solid var(--gold);
+      margin-bottom: 14px; flex-shrink: 0;
+    }
+    .login-logo-wrap img { width: 100%; height: 100%; object-fit: cover; }
+    .login-title {
+      font-size: 18px; font-weight: 700; color: var(--gold);
+      margin-bottom: 4px; text-align: center;
+    }
+    .login-sub {
+      font-size: 11px; color: var(--text2); margin-bottom: 24px; text-align: center;
+    }
+    .login-box .form-group { width: 100%; }
+    .login-err {
+      width: 100%; margin-top: 10px;
+      font-size: 12px; color: #e74c3c; text-align: center;
+      min-height: 18px;
+    }
+
     /* ─── Header ─── */
     header {
       position: sticky; top: 0; z-index: 200;
@@ -225,6 +262,33 @@
     .btn-anular:hover  { border-color: var(--primary); background: rgba(192,57,43,.1); }
     .btn-anular:active { background: rgba(192,57,43,.2); }
     .btn-anular:disabled { opacity: .45; cursor: not-allowed; }
+
+    .btn-ver-ventas {
+      padding: 5px 10px; border: 1px solid rgba(74,144,217,.4); border-radius: 6px;
+      background: transparent; font-size: 11px; font-weight: 600;
+      color: #4A90D9; cursor: pointer; margin-right: 4px;
+      touch-action: manipulation; user-select: none; -webkit-user-select: none;
+      font-family: 'Poppins', sans-serif; transition: all .15s;
+    }
+    .btn-ver-ventas:hover  { border-color: #4A90D9; background: rgba(74,144,217,.1); }
+    .btn-ver-ventas:active { background: rgba(74,144,217,.2); }
+
+    .vc-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 9px 0; border-bottom: 1px solid var(--border);
+    }
+    .vc-item:last-child { border-bottom: none; }
+    .vc-item-main { flex: 1; min-width: 0; }
+    .vc-desc { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .vc-fecha { font-size: 11px; color: var(--text2); margin-top: 2px; }
+    .vc-monto { font-size: 13px; font-weight: 700; color: #e07070; white-space: nowrap; }
+    .vc-total {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 0 0; margin-top: 4px;
+      border-top: 2px solid var(--border);
+      font-size: 14px; font-weight: 700;
+    }
+    .vc-total-monto { color: #e07070; font-size: 16px; }
 
     /* ─── Saldos ─── */
     .saldo-pos  { color: #e07070; }
@@ -438,6 +502,27 @@
 </head>
 <body>
 
+<!-- ═══════════ LOGIN ═══════════ -->
+<div id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo-wrap">
+      <img src="img/hero.jpg" alt="Logo" onerror="this.style.display='none'">
+    </div>
+    <div class="login-title">AndyS – Control de Ventas</div>
+    <div class="login-sub">Ingresá tus credenciales para continuar</div>
+    <div class="form-group">
+      <label>Usuario</label>
+      <input type="text" id="login-user" placeholder="Usuario" autocomplete="username" autocapitalize="none">
+    </div>
+    <div class="form-group" style="margin-top:10px">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="Contraseña" autocomplete="current-password">
+    </div>
+    <div class="login-err" id="login-err"></div>
+    <button class="btn btn-primary" id="btn-login" style="margin-top:6px" onclick="hacerLogin()">Ingresar</button>
+  </div>
+</div>
+
 <header>
   <div class="header-overlay">
     <img class="header-logo" src="img/logo.png" alt="AndyS"
@@ -520,7 +605,7 @@
 </div>
 
 <!-- ═══════════ MODAL CLIENTE ═══════════ -->
-<div class="modal-overlay hidden" id="modal-overlay" onclick="cerrarModalSiOverlay(event)">
+<div class="modal-overlay hidden" id="modal-overlay">
   <div class="modal">
     <div class="modal-title">
       <span id="modal-titulo">Nuevo cliente</span>
@@ -573,7 +658,7 @@
 </div>
 
 <!-- ═══════════ MODAL VENTA ═══════════ -->
-<div class="modal-overlay hidden" id="modal-venta-overlay" onclick="cerrarModalVentaSiOverlay(event)">
+<div class="modal-overlay hidden" id="modal-venta-overlay">
   <div class="modal">
     <div class="modal-title">
       <span id="mv-titulo">Nueva venta</span>
@@ -636,7 +721,7 @@
 </div>
 
 <!-- ═══════════ MODAL PAGO ═══════════ -->
-<div class="modal-overlay hidden" id="modal-pago-overlay" onclick="cerrarModalPagoSiOverlay(event)">
+<div class="modal-overlay hidden" id="modal-pago-overlay">
   <div class="modal">
     <div class="modal-title">
       <span id="mp-titulo">Nuevo pago</span>
@@ -745,6 +830,23 @@
   </button>
 </nav>
 
+<!-- ═══════════ MODAL VENTAS DE CLIENTE ═══════════ -->
+<div class="modal-overlay hidden" id="modal-vc-overlay">
+  <div class="modal" style="max-height:88vh; display:flex; flex-direction:column; padding-bottom:20px">
+    <div class="modal-title">
+      <span id="vc-titulo">Ventas pendientes</span>
+      <button class="modal-close" onclick="cerrarModalVC()">✕</button>
+    </div>
+    <div id="vc-resumen" style="font-size:12px; color:var(--text2); margin-bottom:12px"></div>
+    <div id="vc-lista" style="flex:1; overflow-y:auto; min-height:80px"></div>
+    <div id="vc-total-bar"></div>
+    <div style="display:flex; gap:8px; margin-top:14px">
+      <button class="btn btn-cancel" style="font-size:13px" onclick="copiarVentasCliente()">Copiar texto</button>
+      <button class="btn btn-primary" style="font-size:13px" onclick="exportarVentasCliente()">Exportar .txt</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 import {
@@ -762,6 +864,47 @@ const app = initializeApp({
   appId:             "1:217860282947:web:de5d1c000d2ff0c8efd2f6"
 });
 const db = getFirestore(app, 'andyslapry');
+
+/* ── LOGIN ── */
+window.hacerLogin = async function() {
+  const usuario = document.getElementById('login-user').value.trim();
+  const password = document.getElementById('login-pass').value;
+  const errEl   = document.getElementById('login-err');
+  const btnEl   = document.getElementById('btn-login');
+
+  if (!usuario || !password) {
+    errEl.textContent = 'Completá usuario y contraseña.';
+    return;
+  }
+
+  btnEl.disabled = true;
+  btnEl.textContent = 'Verificando...';
+  errEl.textContent = '';
+
+  try {
+    const snap = await getDocs(
+      query(collection(db, 'admins'), where('usuario', '==', usuario), where('password', '==', password))
+    );
+    if (!snap.empty) {
+      document.getElementById('login-overlay').classList.add('hidden');
+      ir('dashboard');
+    } else {
+      errEl.textContent = 'Usuario o contraseña incorrectos.';
+    }
+  } catch (e) {
+    errEl.textContent = 'Error al conectar. Intentá de nuevo.';
+  } finally {
+    btnEl.disabled = false;
+    btnEl.textContent = 'Ingresar';
+  }
+};
+
+document.getElementById('login-pass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') window.hacerLogin();
+});
+document.getElementById('login-user').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('login-pass').focus();
+});
 
 /* ── HELPERS ── */
 const hoy = () => new Date().toISOString().split('T')[0];
@@ -897,6 +1040,7 @@ function renderTablaClientes(lista) {
               <td class="td-id">${c.identificacion || '—'}</td>
               <td class="td-saldo ${saldo > 0 ? 'saldo-pos' : 'saldo-cero'}">${fmtGs(saldo)}</td>
               <td class="td-acc">
+                <button class="btn-ver-ventas" data-cid="${c.id}" data-cnombre="${c.nombre}">Ventas</button>
                 <button class="btn-editar" data-id="${c.id}">Editar</button>
               </td>
             </tr>`;
@@ -1619,7 +1763,7 @@ $('mp-fecha').value = hoy();
 $('co-fecha').value = hoy();
 $('e-fecha').value  = hoy();
 
-cargarClientes().then(() => cargarDashboard());
+/* La carga inicial se dispara desde hacerLogin() luego de autenticar */
 
 /* Cerrar modales con Escape */
 document.addEventListener('keydown', e => {
@@ -1628,9 +1772,99 @@ document.addEventListener('keydown', e => {
   }
 });
 
+/* ══════════════════════════
+   VENTAS DE CLIENTE
+══════════════════════════ */
+let vcVentas = [];
+let vcClienteNombre = '';
+
+window.abrirVentasCliente = async function(cid, cnombre) {
+  vcClienteNombre = cnombre;
+  $('vc-titulo').textContent  = cnombre;
+  $('vc-resumen').textContent = 'Cargando ventas...';
+  $('vc-lista').innerHTML     = '<div class="cargando">Cargando...</div>';
+  $('vc-total-bar').innerHTML = '';
+  $('modal-vc-overlay').classList.remove('hidden');
+
+  try {
+    const snap = await getDocs(collection(db,'ventas'));
+    vcVentas = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(v => v.clienteId === cid && v.estado !== 'pagado' && v.estado !== 'anulado')
+      .sort((a, b) => (a.fecha?.seconds ?? 0) - (b.fecha?.seconds ?? 0));
+
+    const total = vcVentas.reduce((s, v) => s + (v.monto || 0), 0);
+    const cliente = clientesCache.find(c => c.id === cid);
+    $('vc-resumen').textContent =
+      `${vcVentas.length} venta${vcVentas.length !== 1 ? 's' : ''} pendiente${vcVentas.length !== 1 ? 's' : ''}` +
+      (cliente ? `  ·  Saldo: ${fmtGs(cliente.saldoPendiente || 0)}` : '');
+
+    if (!vcVentas.length) {
+      $('vc-lista').innerHTML = '<div class="empty">Sin ventas pendientes</div>';
+      $('vc-total-bar').innerHTML = '';
+      return;
+    }
+
+    $('vc-lista').innerHTML = vcVentas.map(v => `
+      <div class="vc-item">
+        <div class="vc-item-main">
+          <div class="vc-desc">${v.descripcion || '—'}</div>
+          <div class="vc-fecha">${fmtFecha(v.fecha)} <span class="badge badge-${v.estado}" style="margin-left:4px">${v.estado}</span></div>
+        </div>
+        <div class="vc-monto">${fmtGs(v.monto)}</div>
+      </div>`).join('');
+
+    $('vc-total-bar').innerHTML = `
+      <div class="vc-total">
+        <span>Total pendiente</span>
+        <span class="vc-total-monto">${fmtGs(total)}</span>
+      </div>`;
+  } catch(e) {
+    $('vc-lista').innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  }
+};
+
+window.cerrarModalVC = () => $('modal-vc-overlay').classList.add('hidden');
+window.cerrarModalVCSiOverlay = e => { if (e.target === $('modal-vc-overlay')) cerrarModalVC(); };
+
+function buildTextoVentas(wapp = false) {
+  const hoyStr = new Date().toLocaleDateString('es-PY', { day:'2-digit', month:'2-digit', year:'numeric' });
+  const total  = vcVentas.reduce((s, v) => s + (v.monto || 0), 0);
+  const sep    = wapp ? '' : '─'.repeat(40);
+  const titulo = wapp ? `*Ventas pendientes — ${vcClienteNombre}*\n_Al ${hoyStr}_`
+                      : `VENTAS PENDIENTES — ${vcClienteNombre}\nAl ${hoyStr}`;
+  const items  = vcVentas.map(v =>
+    `• ${fmtFecha(v.fecha)}  ${v.descripcion || '—'}  ${fmtGs(v.monto)}`
+  ).join('\n');
+  const pie    = wapp ? `\n*Total: ${fmtGs(total)}*` : `${sep}\nTOTAL PENDIENTE: ${fmtGs(total)}`;
+  return `${titulo}\n\n${items}\n${pie}`;
+}
+
+window.copiarVentasCliente = async function() {
+  if (!vcVentas.length) { toast('Sin ventas para copiar', 'err'); return; }
+  try {
+    await navigator.clipboard.writeText(buildTextoVentas(true));
+    toast('Copiado al portapapeles ✓');
+  } catch {
+    toast('No se pudo copiar', 'err');
+  }
+};
+
+window.exportarVentasCliente = function() {
+  if (!vcVentas.length) { toast('Sin ventas para exportar', 'err'); return; }
+  const texto = buildTextoVentas(false);
+  const blob  = new Blob([texto], { type: 'text/plain;charset=utf-8' });
+  const url   = URL.createObjectURL(blob);
+  const a     = document.createElement('a');
+  a.href      = url;
+  a.download  = `ventas-${vcClienteNombre.replace(/\s+/g,'-')}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
 /* Botones Editar: tolerancia de movimiento en touch */
 document.addEventListener('pointerdown', e => {
-  const btn = e.target.closest('.btn-editar');
+  const btn = e.target.closest('.btn-editar, .btn-ver-ventas');
   if (!btn) return;
   const startX = e.clientX, startY = e.clientY;
   const onUp = ev => {
@@ -1638,9 +1872,10 @@ document.addEventListener('pointerdown', e => {
     document.removeEventListener('pointercancel', onUp);
     const dist = Math.abs(ev.clientX - startX) + Math.abs(ev.clientY - startY);
     if (dist < 12) {
-      if (btn.dataset.id)  abrirModalEditar(btn.dataset.id);
-      if (btn.dataset.vid) abrirModalEditarVenta(btn.dataset.vid);
-      if (btn.dataset.pid) abrirModalEditarPago(btn.dataset.pid);
+      if (btn.dataset.id)     abrirModalEditar(btn.dataset.id);
+      if (btn.dataset.vid)    abrirModalEditarVenta(btn.dataset.vid);
+      if (btn.dataset.pid)    abrirModalEditarPago(btn.dataset.pid);
+      if (btn.dataset.cid)    abrirVentasCliente(btn.dataset.cid, btn.dataset.cnombre || '');
     }
   };
   document.addEventListener('pointerup', onUp);
