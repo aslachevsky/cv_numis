@@ -680,7 +680,7 @@
     </div>
     <div class="form-group">
       <label>Monto (₲) *</label>
-      <input type="number" id="mv-monto" placeholder="0" min="0" step="1000">
+      <input type="text" id="mv-monto" placeholder="0" inputmode="numeric" autocomplete="off" oninput="fmtMontoInput(this)">
     </div>
     <div class="form-group" id="mv-estado-grupo">
       <label>Estado</label>
@@ -915,9 +915,18 @@ const fmtFecha = ts => {
   return d.toLocaleDateString('es-PY', { day:'2-digit', month:'2-digit', year:'numeric' });
 };
 
-const fmtGs = n => '₲ ' + Math.round(n || 0).toLocaleString('es-PY');
+const fmtGs = n => '₲ ' + Math.round(n || 0).toLocaleString('es-PY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 const toTs = s => Timestamp.fromDate(new Date(s + 'T12:00:00'));
+
+function fmtMontoInput(el) {
+  const raw = el.value.replace(/\D/g, '');
+  if (!raw) { el.value = ''; return; }
+  const fmt = parseInt(raw, 10).toLocaleString('es-PY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  const pos = el.selectionStart + (fmt.length - el.value.length);
+  el.value = fmt;
+  try { el.setSelectionRange(pos, pos); } catch(e) {}
+}
 
 const $ = id => document.getElementById(id);
 
@@ -1235,7 +1244,7 @@ window.abrirModalEditarVenta = function(id) {
   $('mv-cliente').value = v.clienteId || '';
   $('mv-desc').value    = v.descripcion || '';
   $('mv-fecha').value   = v.fecha?.toDate ? v.fecha.toDate().toISOString().split('T')[0] : hoy();
-  $('mv-monto').value   = v.monto || 0;
+  $('mv-monto').value   = Math.round(v.monto || 0).toLocaleString('es-PY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   $('mv-estado').value  = v.estado || 'pendiente';
   $('mv-estado-grupo').style.display = 'block';
   $('btn-mv-guardar').textContent = 'Actualizar';
@@ -1250,7 +1259,7 @@ window.guardarModalVenta = async function() {
   const clienteId     = sel.value;
   const clienteNombre = sel.options[sel.selectedIndex]?.dataset.nombre || '';
   const fecha  = $('mv-fecha').value;
-  const monto  = parseFloat($('mv-monto').value);
+  const monto  = parseInt($('mv-monto').value.replace(/\./g, '') || '0', 10);
   const esNuevo = ventaModo === 'nuevo';
   const estado = esNuevo ? 'pendiente' : $('mv-estado').value;
 
@@ -1747,7 +1756,7 @@ function renderChartMensual(labels, ventasData, pagosData) {
           grid: { color: 'rgba(42,52,82,0.4)' },
           ticks: {
             font: { size: 11 },
-            callback: v => v >= 1e6 ? (v/1e6).toFixed(1)+'M'
+            callback: v => v >= 1e6 ? (v/1e6).toFixed(0)+'M'
                         : v >= 1e3 ? (v/1e3).toFixed(0)+'K'
                         : v
           }

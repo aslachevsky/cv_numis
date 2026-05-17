@@ -325,7 +325,7 @@ function mostrarPreview() {
   $('statOmitidos').textContent = sinMovimientos.length;
   $('resumen').style.display = 'block';
 
-  const fmtGs = n => '₲ ' + Math.round(n).toLocaleString('es-PY');
+  const fmtGs = n => '₲ ' + Math.round(n).toLocaleString('es-PY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
   $('previewBody').innerHTML = datosParseados.map((d, i) => {
     const sinMov = d.ventas.length === 0 && d.pagos.length === 0;
