@@ -651,6 +651,7 @@
         <option value="anulado">Anulado</option>
       </select>
       <button class="btn-nuevo" onclick="abrirModalNuevaVenta()">+ Nueva</button>
+      <button class="btn" id="btn-marcar-pagadas" style="display:none; font-size:13px; background:rgba(39,174,96,.18); color:#5dde8a; border:1px solid rgba(39,174,96,.3); padding:6px 12px; border-radius:6px; cursor:pointer; white-space:nowrap" onclick="marcarTodasPagadasVentas()">Marcar todas pagadas</button>
     </div>
     <div class="cl-count" id="v-count"></div>
     <div id="lista-ventas"></div>
@@ -667,8 +668,9 @@
     <div class="form-group">
       <label>Cliente *</label>
       <div class="select-wrap">
-        <select id="mv-cliente"><option value="">Seleccionar cliente...</option></select>
+        <select id="mv-cliente" onchange="mostrarSaldoCliente()"><option value="">Seleccionar cliente...</option></select>
       </div>
+      <div id="mv-saldo-cliente" style="display:none; margin-top:4px; font-size:13px; font-weight:600; color:#e07070;"></div>
     </div>
     <div class="form-group">
       <label>Descripción</label>
@@ -840,9 +842,10 @@
     <div id="vc-resumen" style="font-size:12px; color:var(--text2); margin-bottom:12px"></div>
     <div id="vc-lista" style="flex:1; overflow-y:auto; min-height:80px"></div>
     <div id="vc-total-bar"></div>
-    <div style="display:flex; gap:8px; margin-top:14px">
+    <div style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap">
       <button class="btn btn-cancel" style="font-size:13px" onclick="copiarVentasCliente()">Copiar texto</button>
       <button class="btn btn-primary" style="font-size:13px" onclick="exportarVentasCliente()">Exportar .txt</button>
+      <button class="btn" style="font-size:13px; background:rgba(39,174,96,.18); color:#5dde8a; border:1px solid rgba(39,174,96,.3); margin-left:auto" onclick="marcarTodasPagadas()">Marcar todas pagadas</button>
     </div>
   </div>
 </div>
@@ -1187,6 +1190,12 @@ window.filtrarVentas = function() {
   });
   if (cnt) cnt.textContent = `${lista.length} venta${lista.length !== 1 ? 's' : ''}`;
   renderTablaVentas(lista);
+
+  const btnPagadas = $('btn-marcar-pagadas');
+  if (btnPagadas) {
+    const hayPendientes = clienteId && ventasCache.some(v => v.clienteId === clienteId && v.estado === 'pendiente');
+    btnPagadas.style.display = hayPendientes ? '' : 'none';
+  }
 };
 
 function renderTablaVentas(lista) {
@@ -1219,7 +1228,19 @@ function renderTablaVentas(lista) {
 function syncSelectClientes(selectId) {
   const sorted = [...clientesCache].sort((a,b) => (a.nombre||'').localeCompare(b.nombre||''));
   $(selectId).innerHTML = '<option value="">Seleccionar cliente...</option>' +
-    sorted.map(c => `<option value="${c.id}" data-nombre="${c.nombre}">${c.nombre}</option>`).join('');
+    sorted.map(c => `<option value="${c.id}" data-nombre="${c.nombre}" data-saldo="${c.saldoPendiente || 0}">${c.nombre}</option>`).join('');
+}
+
+function mostrarSaldoCliente() {
+  const sel = $('mv-cliente');
+  const opt = sel.options[sel.selectedIndex];
+  const saldoDiv = $('mv-saldo-cliente');
+  if (!saldoDiv) return;
+  if (!sel.value) { saldoDiv.style.display = 'none'; return; }
+  const saldo = parseFloat(opt?.dataset.saldo || 0);
+  saldoDiv.textContent = saldo > 0 ? `Saldo pendiente: ${fmtGs(saldo)}` : 'Sin saldo pendiente';
+  saldoDiv.style.color = saldo > 0 ? '#e07070' : '#5dde8a';
+  saldoDiv.style.display = 'block';
 }
 
 window.abrirModalNuevaVenta = function() {
@@ -1227,8 +1248,9 @@ window.abrirModalNuevaVenta = function() {
   $('mv-titulo').textContent = 'Nueva venta';
   syncSelectClientes('mv-cliente');
   $('mv-cliente').value = $('v-fil-cliente')?.value || '';
+  mostrarSaldoCliente();
   $('mv-desc').value = ''; $('mv-fecha').value = hoy();
-  $('mv-monto').value = ''; $('mv-estado').value = 'pendiente';
+  $('mv-monto').value = '0'; $('mv-estado').value = 'pendiente';
   $('mv-estado-grupo').style.display = 'none';
   $('btn-mv-guardar').textContent = 'Guardar';
   $('modal-venta-overlay').classList.remove('hidden');
@@ -1242,6 +1264,7 @@ window.abrirModalEditarVenta = function(id) {
   $('mv-titulo').textContent = 'Editar venta';
   syncSelectClientes('mv-cliente');
   $('mv-cliente').value = v.clienteId || '';
+  mostrarSaldoCliente();
   $('mv-desc').value    = v.descripcion || '';
   $('mv-fecha').value   = v.fecha?.toDate ? v.fecha.toDate().toISOString().split('T')[0] : hoy();
   $('mv-monto').value   = Math.round(v.monto || 0).toLocaleString('es-PY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -1339,6 +1362,28 @@ window.anularVenta = async function(id) {
   } catch(e) {
     toast('Error: ' + e.message, 'err');
     if (btn) { btn.disabled = false; btn.textContent = 'Anular'; }
+  }
+};
+
+window.marcarTodasPagadasVentas = async function() {
+  const clienteId = $('v-fil-cliente')?.value || '';
+  if (!clienteId) { toast('Seleccioná un cliente primero', 'err'); return; }
+
+  const pendientes = ventasCache.filter(v => v.clienteId === clienteId && v.estado === 'pendiente');
+  if (!pendientes.length) { toast('No hay ventas pendientes para este cliente', 'err'); return; }
+
+  const n = pendientes.length;
+  if (!confirm(`¿Marcar ${n} venta${n !== 1 ? 's' : ''} como pagada${n !== 1 ? 's' : ''}?`)) return;
+
+  try {
+    const total = pendientes.reduce((s, v) => s + (v.monto || 0), 0);
+    await Promise.all(pendientes.map(v => updateDoc(doc(db, 'ventas', v.id), { estado: 'pagado' })));
+    await updateDoc(doc(db, 'clientes', clienteId), { saldoPendiente: increment(-total) });
+    toast(`${n} venta${n !== 1 ? 's' : ''} marcada${n !== 1 ? 's' : ''} como pagadas ✓`);
+    await cargarClientes();
+    await cargarVentas();
+  } catch(e) {
+    toast('Error: ' + e.message, 'err');
   }
 };
 
@@ -1786,8 +1831,10 @@ document.addEventListener('keydown', e => {
 ══════════════════════════ */
 let vcVentas = [];
 let vcClienteNombre = '';
+let vcClienteId = '';
 
 window.abrirVentasCliente = async function(cid, cnombre) {
+  vcClienteId     = cid;
   vcClienteNombre = cnombre;
   $('vc-titulo').textContent  = cnombre;
   $('vc-resumen').textContent = 'Cargando ventas...';
@@ -1835,6 +1882,24 @@ window.abrirVentasCliente = async function(cid, cnombre) {
 
 window.cerrarModalVC = () => $('modal-vc-overlay').classList.add('hidden');
 window.cerrarModalVCSiOverlay = e => { if (e.target === $('modal-vc-overlay')) cerrarModalVC(); };
+
+window.marcarTodasPagadas = async function() {
+  if (!vcVentas.length) { toast('No hay ventas pendientes', 'err'); return; }
+  const n = vcVentas.length;
+  if (!confirm(`¿Marcar ${n} venta${n !== 1 ? 's' : ''} como pagada${n !== 1 ? 's' : ''}?`)) return;
+
+  try {
+    const total = vcVentas.reduce((s, v) => s + (v.monto || 0), 0);
+    await Promise.all(vcVentas.map(v => updateDoc(doc(db, 'ventas', v.id), { estado: 'pagado' })));
+    if (vcClienteId) {
+      await updateDoc(doc(db, 'clientes', vcClienteId), { saldoPendiente: increment(-total) });
+    }
+    toast(`${n} venta${n !== 1 ? 's' : ''} marcada${n !== 1 ? 's' : ''} como pagadas ✓`);
+    await abrirVentasCliente(vcClienteId, vcClienteNombre);
+  } catch(e) {
+    toast('Error: ' + e.message, 'err');
+  }
+};
 
 function buildTextoVentas(wapp = false) {
   const hoyStr = new Date().toLocaleDateString('es-PY', { day:'2-digit', month:'2-digit', year:'numeric' });
