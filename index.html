@@ -654,6 +654,7 @@
       <button class="btn" id="btn-marcar-pagadas" style="display:none; font-size:13px; background:rgba(39,174,96,.18); color:#5dde8a; border:1px solid rgba(39,174,96,.3); padding:6px 12px; border-radius:6px; cursor:pointer; white-space:nowrap" onclick="marcarTodasPagadasVentas()">Marcar todas pagadas</button>
     </div>
     <div class="cl-count" id="v-count"></div>
+    <div id="v-total-pendiente" style="display:none; padding:6px 12px; margin-bottom:6px; font-size:14px; font-weight:600; color:#e07070; background:rgba(224,112,112,.1); border-radius:6px;"></div>
     <div id="lista-ventas"></div>
   </div>
 </div>
@@ -1191,6 +1192,23 @@ window.filtrarVentas = function() {
   if (cnt) cnt.textContent = `${lista.length} venta${lista.length !== 1 ? 's' : ''}`;
   renderTablaVentas(lista);
 
+  const totalDiv = $('v-total-pendiente');
+  if (totalDiv) {
+    if (clienteId) {
+      const pendientes = ventasCache.filter(v => v.clienteId === clienteId && v.estado === 'pendiente');
+      const total = pendientes.reduce((sum, v) => sum + (v.monto || 0), 0);
+      const count = pendientes.length;
+      if (total > 0) {
+        totalDiv.textContent = `${count} venta${count !== 1 ? 's' : ''} pendiente${count !== 1 ? 's' : ''} — Total: ${fmtGs(total)}`;
+        totalDiv.style.display = 'block';
+      } else {
+        totalDiv.style.display = 'none';
+      }
+    } else {
+      totalDiv.style.display = 'none';
+    }
+  }
+
   const btnPagadas = $('btn-marcar-pagadas');
   if (btnPagadas) {
     const hayPendientes = clienteId && ventasCache.some(v => v.clienteId === clienteId && v.estado === 'pendiente');
@@ -1233,13 +1251,20 @@ function syncSelectClientes(selectId) {
 
 function mostrarSaldoCliente() {
   const sel = $('mv-cliente');
-  const opt = sel.options[sel.selectedIndex];
   const saldoDiv = $('mv-saldo-cliente');
   if (!saldoDiv) return;
   if (!sel.value) { saldoDiv.style.display = 'none'; return; }
-  const saldo = parseFloat(opt?.dataset.saldo || 0);
-  saldoDiv.textContent = saldo > 0 ? `Saldo pendiente: ${fmtGs(saldo)}` : 'Sin saldo pendiente';
-  saldoDiv.style.color = saldo > 0 ? '#e07070' : '#5dde8a';
+  const clienteId = sel.value;
+  const pendientes = ventasCache.filter(v => v.clienteId === clienteId && v.estado === 'pendiente');
+  const total = pendientes.reduce((sum, v) => sum + (v.monto || 0), 0);
+  const count = pendientes.length;
+  if (total > 0) {
+    saldoDiv.textContent = `${count} venta${count !== 1 ? 's' : ''} pendiente${count !== 1 ? 's' : ''} — Total: ${fmtGs(total)}`;
+    saldoDiv.style.color = '#e07070';
+  } else {
+    saldoDiv.textContent = 'Sin ventas pendientes';
+    saldoDiv.style.color = '#5dde8a';
+  }
   saldoDiv.style.display = 'block';
 }
 
