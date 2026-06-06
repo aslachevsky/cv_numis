@@ -1402,9 +1402,15 @@ window.marcarTodasPagadasVentas = async function() {
 
   try {
     const total = pendientes.reduce((s, v) => s + (v.monto || 0), 0);
+    const clienteNombre = pendientes[0].clienteNombre || '';
     await Promise.all(pendientes.map(v => updateDoc(doc(db, 'ventas', v.id), { estado: 'pagado' })));
     await updateDoc(doc(db, 'clientes', clienteId), { saldoPendiente: increment(-total) });
+    await addDoc(collection(db, 'pagos'), {
+      clienteId, clienteNombre, monto: total,
+      fecha: toTs(hoy()), observacion: `Pago generado al marcar ${n} venta${n !== 1 ? 's' : ''} como pagada${n !== 1 ? 's' : ''}`
+    });
     toast(`${n} venta${n !== 1 ? 's' : ''} marcada${n !== 1 ? 's' : ''} como pagadas ✓`);
+    await cargarPagos();
     await cargarClientes();
     await cargarVentas();
   } catch(e) {
@@ -1448,6 +1454,7 @@ async function cargarPagos() {
     if ($('p-count')) $('p-count').textContent = '';
   }
 }
+window.cargarPagos = cargarPagos;
 
 window.filtrarPagos = function() {
   const desde = $('p-fecha-desde')?.value || '';
@@ -1918,6 +1925,11 @@ window.marcarTodasPagadas = async function() {
     await Promise.all(vcVentas.map(v => updateDoc(doc(db, 'ventas', v.id), { estado: 'pagado' })));
     if (vcClienteId) {
       await updateDoc(doc(db, 'clientes', vcClienteId), { saldoPendiente: increment(-total) });
+      await addDoc(collection(db, 'pagos'), {
+        clienteId: vcClienteId, clienteNombre: vcClienteNombre, monto: total,
+        fecha: toTs(hoy()), observacion: `Pago generado al marcar ${n} venta${n !== 1 ? 's' : ''} como pagada${n !== 1 ? 's' : ''}`
+      });
+      await cargarPagos();
     }
     toast(`${n} venta${n !== 1 ? 's' : ''} marcada${n !== 1 ? 's' : ''} como pagadas ✓`);
     await abrirVentasCliente(vcClienteId, vcClienteNombre);

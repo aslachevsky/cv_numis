@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const d = new Date\\(\\); console.log\\('Local:', d.toString\\(\\)\\); console.log\\('ISO \\(UTC\\):', d.toISOString\\(\\)\\); console.log\\('Local date via toLocaleDateString es-PY:', d.toLocaleDateString\\('es-PY'\\)\\); console.log\\('TZ offset \\(min\\):', d.getTimezoneOffset\\(\\)\\);\")",
+      "Bash(git log *)"
+    ]
+  }
+}
