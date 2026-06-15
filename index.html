@@ -621,7 +621,13 @@
     </div>
     <div class="form-group">
       <label>Teléfono</label>
-      <input type="tel" id="m-tel" placeholder="Opcional">
+      <div style="display:flex; gap:6px; align-items:stretch;">
+        <input type="tel" id="m-tel" placeholder="Opcional" style="flex:1; min-width:0">
+        <button type="button" id="btn-picker-contacto" onclick="elegirContacto()" title="Buscar en contactos"
+          style="display:none; align-items:center; justify-content:center; padding:0 12px; border-radius:8px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.08); color:#ccc; font-size:18px; cursor:pointer; white-space:nowrap; flex-shrink:0">
+          📋
+        </button>
+      </div>
     </div>
     <div class="form-group" id="m-saldo-grupo">
       <label>Saldo pendiente (₲)</label>
@@ -1103,6 +1109,24 @@ function refreshSelects() {
     sorted.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
   if (prevVal) sel.value = prevVal;
 }
+
+/* ---- Contact Picker API ---- */
+if ('contacts' in navigator && 'ContactsManager' in window) {
+  document.getElementById('btn-picker-contacto').style.display = 'inline-flex';
+}
+
+window.elegirContacto = async function() {
+  if (!('contacts' in navigator)) return;
+  try {
+    const sel = await navigator.contacts.select(['name', 'tel'], { multiple: false });
+    if (!sel.length) return;
+    const c = sel[0];
+    if (c.tel && c.tel.length) $('m-tel').value = c.tel[0].replace(/\s/g, '');
+    if (c.name && c.name.length && !$('m-nombre').value.trim()) $('m-nombre').value = c.name[0];
+  } catch (e) {
+    console.warn('Contact picker cancelado o no disponible', e);
+  }
+};
 
 /* ---- Modal cliente ---- */
 window.abrirModalNuevo = function() {
