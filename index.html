@@ -651,6 +651,7 @@
         <option value="anulado">Anulado</option>
       </select>
       <button class="btn-nuevo" onclick="abrirModalNuevaVenta()">+ Nueva</button>
+      <button class="btn" id="btn-wapp-ventas" style="display:none; font-size:13px; background:rgba(37,211,102,.18); color:#25D366; border:1px solid rgba(37,211,102,.4); padding:6px 12px; border-radius:6px; cursor:pointer; white-space:nowrap" onclick="enviarWhatsAppVentasSec()">📲 WhatsApp</button>
       <button class="btn" id="btn-marcar-pagadas" style="display:none; font-size:13px; background:rgba(39,174,96,.18); color:#5dde8a; border:1px solid rgba(39,174,96,.3); padding:6px 12px; border-radius:6px; cursor:pointer; white-space:nowrap" onclick="marcarTodasPagadasVentas()">Marcar todas pagadas</button>
     </div>
     <div class="cl-count" id="v-count"></div>
@@ -846,6 +847,7 @@
     <div style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap">
       <button class="btn btn-cancel" style="font-size:13px" onclick="copiarVentasCliente()">Copiar texto</button>
       <button class="btn btn-primary" style="font-size:13px" onclick="exportarVentasCliente()">Exportar .txt</button>
+      <button id="btn-wapp-vc" class="btn" style="font-size:13px; background:rgba(37,211,102,.18); color:#25D366; border:1px solid rgba(37,211,102,.4); display:none" onclick="enviarWhatsAppVentas()">📲 WhatsApp</button>
       <button class="btn" style="font-size:13px; background:rgba(39,174,96,.18); color:#5dde8a; border:1px solid rgba(39,174,96,.3); margin-left:auto" onclick="marcarTodasPagadas()">Marcar todas pagadas</button>
     </div>
   </div>
@@ -1053,7 +1055,7 @@ function renderTablaClientes(lista) {
               <td class="td-id">${c.identificacion || '—'}</td>
               <td class="td-saldo ${saldo > 0 ? 'saldo-pos' : 'saldo-cero'}">${fmtGs(saldo)}</td>
               <td class="td-acc">
-                <button class="btn-ver-ventas" data-cid="${c.id}" data-cnombre="${c.nombre}">Ventas</button>
+                <button class="btn-ver-ventas" data-cid="${c.id}" data-cnombre="${c.nombre}" data-ctel="${c.telefono || ''}">Ventas</button>
                 <button class="btn-editar" data-id="${c.id}">Editar</button>
               </td>
             </tr>`;
@@ -1213,6 +1215,14 @@ window.filtrarVentas = function() {
   if (btnPagadas) {
     const hayPendientes = clienteId && ventasCache.some(v => v.clienteId === clienteId && v.estado === 'pendiente');
     btnPagadas.style.display = hayPendientes ? '' : 'none';
+  }
+
+  const btnWapp = $('btn-wapp-ventas');
+  if (btnWapp) {
+    const cliente = clienteId ? clientesCache.find(c => c.id === clienteId) : null;
+    const tel = (cliente?.telefono || '').replace(/\D/g, '');
+    const hayPendientes = clienteId && ventasCache.some(v => v.clienteId === clienteId && v.estado === 'pendiente');
+    btnWapp.style.display = (tel && hayPendientes) ? '' : 'none';
   }
 };
 
@@ -1550,6 +1560,28 @@ window.guardarModalPago = async function() {
         fecha: toTs(fecha), observacion: $('mp-obs').value.trim()
       });
       await updateDoc(doc(db,'clientes',clienteId), { saldoPendiente: increment(-monto) });
+
+      // Auto-marcar ventas pendientes como pagadas (saldo primero, luego más vieja a más nueva)
+      const snapV = await getDocs(query(
+        collection(db,'ventas'),
+        where('clienteId','==', clienteId),
+        where('estado','==','pendiente')
+      ));
+      const pendientesV = snapV.docs.map(d => ({ id: d.id, ...d.data() }));
+      const esSaldo = v => (v.descripcion || '').trim().toLowerCase() === 'saldo';
+      const saldoV = pendientesV.filter(esSaldo).sort((a,b) => (a.fecha?.seconds??0)-(b.fecha?.seconds??0));
+      const otrasV = pendientesV.filter(v => !esSaldo(v)).sort((a,b) => (a.fecha?.seconds??0)-(b.fecha?.seconds??0));
+      let restante = monto;
+      const aPagar = [];
+      for (const v of [...saldoV, ...otrasV]) {
+        if (restante <= 0) break;
+        if ((v.monto||0) <= restante) { aPagar.push(v); restante -= v.monto; }
+        else break;
+      }
+      if (aPagar.length > 0) {
+        await Promise.all(aPagar.map(v => updateDoc(doc(db,'ventas',v.id), { estado: 'pagado' })));
+      }
+
       toast('Pago guardado ✓');
     } else {
       const delta = monto - (pagoEditData.monto || 0);
@@ -1571,6 +1603,7 @@ window.guardarModalPago = async function() {
     cerrarModalPago();
     await cargarPagos();
     await cargarClientes();
+    await cargarVentas();
   } catch(e) { toast('Error: ' + e.message, 'err'); }
   btn.disabled = false;
   btn.textContent = pagoModo === 'nuevo' ? 'Guardar' : 'Actualizar';
@@ -1864,14 +1897,17 @@ document.addEventListener('keydown', e => {
 let vcVentas = [];
 let vcClienteNombre = '';
 let vcClienteId = '';
+let vcClienteTelefono = '';
 
-window.abrirVentasCliente = async function(cid, cnombre) {
-  vcClienteId     = cid;
-  vcClienteNombre = cnombre;
+window.abrirVentasCliente = async function(cid, cnombre, ctel = '') {
+  vcClienteId       = cid;
+  vcClienteNombre   = cnombre;
+  vcClienteTelefono = (ctel || '').replace(/\D/g, '');
   $('vc-titulo').textContent  = cnombre;
   $('vc-resumen').textContent = 'Cargando ventas...';
   $('vc-lista').innerHTML     = '<div class="cargando">Cargando...</div>';
   $('vc-total-bar').innerHTML = '';
+  $('btn-wapp-vc').style.display = vcClienteTelefono ? 'inline-flex' : 'none';
   $('modal-vc-overlay').classList.remove('hidden');
 
   try {
@@ -1973,6 +2009,30 @@ window.exportarVentasCliente = function() {
   URL.revokeObjectURL(url);
 };
 
+window.enviarWhatsAppVentas = function() {
+  if (!vcVentas.length) { toast('Sin ventas para enviar', 'err'); return; }
+  if (!vcClienteTelefono) { toast('El cliente no tiene teléfono cargado', 'err'); return; }
+  const texto = buildTextoVentas(true);
+  const url   = `https://wa.me/${vcClienteTelefono}?text=${encodeURIComponent(texto)}`;
+  window.open(url, '_blank');
+};
+
+window.enviarWhatsAppVentasSec = function() {
+  const clienteId = $('v-fil-cliente')?.value || '';
+  if (!clienteId) { toast('Seleccioná un cliente', 'err'); return; }
+  const cliente = clientesCache.find(c => c.id === clienteId);
+  const tel = (cliente?.telefono || '').replace(/\D/g, '');
+  if (!tel) { toast('El cliente no tiene teléfono cargado', 'err'); return; }
+  const pendientes = ventasCache.filter(v => v.clienteId === clienteId && v.estado === 'pendiente')
+    .sort((a, b) => (a.fecha?.seconds ?? 0) - (b.fecha?.seconds ?? 0));
+  if (!pendientes.length) { toast('Sin ventas pendientes para enviar', 'err'); return; }
+  const hoyStr = new Date().toLocaleDateString('es-PY', { day:'2-digit', month:'2-digit', year:'numeric' });
+  const total  = pendientes.reduce((s, v) => s + (v.monto || 0), 0);
+  const items  = pendientes.map(v => `• ${fmtFecha(v.fecha)}  ${v.descripcion || '—'}  ${fmtGs(v.monto)}`).join('\n');
+  const texto  = `*Ventas pendientes — ${cliente.nombre}*\n_Al ${hoyStr}_\n\n${items}\n\n*Total: ${fmtGs(total)}*`;
+  window.open(`https://wa.me/${tel}?text=${encodeURIComponent(texto)}`, '_blank');
+};
+
 /* Botones Editar: tolerancia de movimiento en touch */
 document.addEventListener('pointerdown', e => {
   const btn = e.target.closest('.btn-editar, .btn-ver-ventas');
@@ -1986,7 +2046,7 @@ document.addEventListener('pointerdown', e => {
       if (btn.dataset.id)     abrirModalEditar(btn.dataset.id);
       if (btn.dataset.vid)    abrirModalEditarVenta(btn.dataset.vid);
       if (btn.dataset.pid)    abrirModalEditarPago(btn.dataset.pid);
-      if (btn.dataset.cid)    abrirVentasCliente(btn.dataset.cid, btn.dataset.cnombre || '');
+      if (btn.dataset.cid)    abrirVentasCliente(btn.dataset.cid, btn.dataset.cnombre || '', btn.dataset.ctel || '');
     }
   };
   document.addEventListener('pointerup', onUp);
