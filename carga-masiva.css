@@ -1,0 +1,173 @@
+/* ════════════════════════════════════════════
+   CARGA MASIVA — estilos del módulo
+   ════════════════════════════════════════════ */
+
+.cm-modal {
+  max-height: 95vh;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 20px;
+}
+
+.cm-campos-comunes {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.cm-formato {
+  font-size: 11px;
+  color: var(--text2);
+  margin-bottom: 6px;
+  line-height: 1.5;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.cm-formato code {
+  color: var(--gold);
+  font-size: 11px;
+}
+
+.cm-textarea {
+  width: 100%;
+  min-height: 220px;
+  max-height: 40vh;
+  padding: 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg2);
+  font-family: 'Courier New', monospace;
+  line-height: 1.6;
+  resize: vertical;
+}
+.cm-textarea:focus {
+  outline: none;
+  border-color: var(--gold);
+  background: var(--card2);
+}
+.cm-textarea::placeholder {
+  color: var(--text2);
+  font-family: 'Poppins', sans-serif;
+  font-size: 12px;
+}
+
+.cm-counter {
+  font-size: 11px;
+  color: var(--text2);
+  margin-top: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cm-counter strong {
+  color: var(--gold);
+}
+
+/* ─── Preview ─── */
+.cm-preview-wrap {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 12px;
+  min-height: 0;
+  max-height: 35vh;
+}
+
+.cm-preview-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+.cm-preview-tabla th {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  padding: 5px 6px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--card);
+}
+.cm-preview-tabla td {
+  padding: 5px 6px;
+  border-bottom: 1px solid rgba(42,52,82,.3);
+  color: var(--text);
+  vertical-align: top;
+}
+.cm-preview-tabla tr:hover td {
+  background: rgba(255,255,255,.02);
+}
+.cm-preview-tabla .cm-row-err td {
+  color: #e07070;
+  background: rgba(224,112,112,.06);
+}
+.cm-preview-tabla .cm-td-num {
+  text-align: right;
+  font-family: 'Courier New', monospace;
+  white-space: nowrap;
+}
+.cm-preview-tabla .cm-td-idx {
+  color: var(--text2);
+  text-align: center;
+  width: 30px;
+}
+
+/* ─── Progress ─── */
+.cm-progress {
+  margin-top: 10px;
+}
+.cm-progress-bar {
+  height: 6px;
+  background: var(--bg2);
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.cm-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold), var(--gold-d));
+  border-radius: 3px;
+  transition: width .15s;
+  width: 0%;
+}
+.cm-progress-text {
+  font-size: 11px;
+  color: var(--text2);
+  margin-top: 4px;
+  text-align: center;
+}
+
+/* ─── Botones de acción ─── */
+.cm-acciones {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.cm-acciones .btn {
+  flex: 1;
+  min-width: 120px;
+}
+
+.btn-cm-previsualizar {
+  background: var(--bg2);
+  color: var(--text);
+  border: 1.5px solid var(--border);
+}
+.btn-cm-previsualizar:hover:not(:disabled) {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+@media (max-width: 480px) {
+  .cm-campos-comunes {
+    grid-template-columns: 1fr;
+  }
+}
