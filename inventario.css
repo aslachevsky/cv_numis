@@ -1,0 +1,32 @@
+/* ════════════════════════════════════════════
+   INVENTARIO — estilos específicos del módulo
+   ════════════════════════════════════════════ */
+
+/* ─── Badges de estado ─── */
+.badge-inv-en_stock   { background: rgba(39,174,96,.12);   color: #5dde8a;  border: 1px solid rgba(39,174,96,.25); }
+.badge-inv-vendido    { background: rgba(74,144,217,.12);  color: #7ab8f5;  border: 1px solid rgba(74,144,217,.25); }
+.badge-inv-recuperado { background: rgba(142,68,173,.12);  color: #b87cda;  border: 1px solid rgba(142,68,173,.25); }
+.badge-inv-entregado  { background: rgba(201,162,39,.12);  color: #d4aa35;  border: 1px solid rgba(201,162,39,.25); }
+.badge-inv-anulado    { background: rgba(120,120,140,.10); color: #7a7a8a;  border: 1px solid rgba(120,120,140,.22); }
+
+/* ─── Equivalencias y cambio ─── */
+.inv-equiv         { font-size: 11px; color: var(--gold); margin-top: 3px; min-height: 16px; }
+.inv-cambio-section { font-size: 11px; color: var(--text2); text-align: right; margin-bottom: 8px; }
+
+/* ─── Botones de cambio de estado rápido ─── */
+.btn-inv-acc {
+  padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 700;
+  cursor: pointer; border: 1px solid; background: transparent;
+  font-family: 'Poppins', sans-serif; transition: all .15s; white-space: nowrap;
+  margin-right: 3px; margin-bottom: 3px;
+}
+.btn-inv-vendido    { color: #7ab8f5; border-color: rgba(74,144,217,.4); }
+.btn-inv-vendido:hover    { background: rgba(74,144,217,.15); }
+.btn-inv-entregado  { color: #d4aa35; border-color: rgba(201,162,39,.4); }
+.btn-inv-entregado:hover  { background: rgba(201,162,39,.15); }
+.btn-inv-recuperado { color: #b87cda; border-color: rgba(142,68,173,.4); }
+.btn-inv-recuperado:hover { background: rgba(142,68,173,.15); }
+.btn-inv-stock      { color: #5dde8a; border-color: rgba(39,174,96,.4); }
+.btn-inv-stock:hover      { background: rgba(39,174,96,.15); }
+.btn-inv-anular     { color: #e07070; border-color: rgba(192,57,43,.35); }
+.btn-inv-anular:hover     { background: rgba(192,57,43,.12); }

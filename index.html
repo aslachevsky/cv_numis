@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="inventario.css">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -818,6 +819,38 @@
   </div>
 </div>
 
+<!-- ═══════════ INVENTARIO ═══════════ -->
+<div class="section" id="sec-inventario">
+  <div class="card">
+    <div class="cl-toolbar">
+      <input class="cl-search" id="inv-buscar" placeholder="🔍 Buscar descripción..."
+             oninput="inventarioPagina = 1; filtrarInventario()" autocomplete="off" style="min-width:140px">
+      <select class="cl-sort" id="inv-fil-rubro" onchange="inventarioPagina = 1; filtrarInventario()">
+        <option value="">Todos los rubros</option>
+        <option value="monedas">Monedas</option>
+        <option value="billetes">Billetes</option>
+        <option value="medallas">Medallas</option>
+        <option value="estampillas">Estampillas</option>
+        <option value="token">Token</option>
+        <option value="otros">Otros</option>
+      </select>
+      <select class="cl-sort" id="inv-fil-estado" onchange="inventarioPagina = 1; filtrarInventario()">
+        <option value="">Todos los estados</option>
+        <option value="en_stock" selected>En Stock</option>
+        <option value="vendido">Vendido</option>
+        <option value="entregado">Entregado</option>
+        <option value="recuperado">Recuperado</option>
+        <option value="anulado">Anulado</option>
+      </select>
+      <button class="btn-nuevo" onclick="abrirModalNuevoInv()">+ Nuevo</button>
+    </div>
+    <div class="inv-cambio-section" id="inv-cambio-section"></div>
+    <div class="cl-count" id="inv-count"></div>
+    <div class="cl-pager" id="inv-pager"></div>
+    <div id="lista-inventario" class="cargando">Cargando...</div>
+  </div>
+</div>
+
 <!-- ═══════════ NAV ═══════════ -->
 <nav>
   <button class="active" id="nav-dashboard" onclick="ir('dashboard')">
@@ -837,6 +870,9 @@
   </button>
   <button id="nav-egresos" onclick="ir('egresos')">
     <span class="icon">📤</span>Egresos
+  </button>
+  <button id="nav-inventario" onclick="ir('inventario')">
+    <span class="icon">📦</span>Inventario
   </button>
 </nav>
 
@@ -859,12 +895,99 @@
   </div>
 </div>
 
+<!-- ═══════════ MODAL INVENTARIO ═══════════ -->
+<div class="modal-overlay hidden" id="modal-inv-overlay">
+  <div class="modal" style="max-height:92vh; overflow-y:auto">
+    <div class="modal-title">
+      <span id="inv-modal-titulo">Nuevo ítem de inventario</span>
+      <button class="modal-close" onclick="cerrarModalInv()">✕</button>
+    </div>
+    <div class="inv-cambio-section" id="inv-cambio-modal" style="margin-bottom:14px; text-align:left; font-size:12px; color:var(--text2)"></div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+      <div class="form-group" style="margin-bottom:0">
+        <label>Rubro *</label>
+        <div class="select-wrap">
+          <select id="inv-rubro">
+            <option value="monedas">Monedas</option>
+            <option value="billetes">Billetes</option>
+            <option value="medallas">Medallas</option>
+            <option value="estampillas">Estampillas</option>
+            <option value="token">Token</option>
+            <option value="otros">Otros coleccionables</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Estado *</label>
+        <div class="select-wrap">
+          <select id="inv-estado" onchange="actualizarFechaVenta()">
+            <option value="en_stock">En Stock</option>
+            <option value="vendido">Vendido</option>
+            <option value="entregado">Entregado</option>
+            <option value="recuperado">Recuperado</option>
+            <option value="anulado">Anulado</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-top:12px">
+      <label>Descripción *</label>
+      <textarea id="inv-desc" placeholder="Descripción del ítem" style="min-height:56px"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>Fecha de compra *</label>
+      <input type="date" id="inv-fecha-compra">
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+      <div class="form-group" style="margin-bottom:0">
+        <label>Precio de compra (USD)</label>
+        <input type="number" id="inv-precio-compra-usd" placeholder="0.00" min="0" step="0.01"
+               oninput="actualizarEquivCompra()">
+        <div class="inv-equiv" id="inv-equiv-compra"></div>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Precio de referencia (USD)</label>
+        <input type="number" id="inv-precio-ref-usd" placeholder="0.00" min="0" step="0.01"
+               oninput="actualizarEquivRef()">
+        <div class="inv-equiv" id="inv-equiv-ref"></div>
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-top:12px">
+      <label>Precio de venta (₲)</label>
+      <input type="number" id="inv-precio-venta-gs" placeholder="0" min="0" step="1000" value="0"
+             oninput="actualizarEquivVenta()">
+      <div class="inv-equiv" id="inv-equiv-venta"></div>
+    </div>
+
+    <div class="form-group" id="inv-fecha-venta-grupo" style="display:none">
+      <label>Fecha de venta</label>
+      <input type="date" id="inv-fecha-venta">
+    </div>
+
+    <div class="form-group">
+      <label>Comentario</label>
+      <textarea id="inv-comentario" placeholder="Notas adicionales (opcional)" style="min-height:48px"></textarea>
+    </div>
+
+    <div class="modal-btns">
+      <button class="btn btn-cancel" onclick="cerrarModalInv()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-inv-guardar" onclick="guardarModalInv()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 import {
   getFirestore, collection, addDoc, getDocs,
   query, where, orderBy, limit, doc, updateDoc, increment, Timestamp, setDoc
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { initInventario }  from "./inventario.js";
 
 /* ── CONFIG ── */
 const app = initializeApp({
@@ -952,14 +1075,18 @@ function toast(msg, tipo = 'ok') {
 function disBtn(id, label) { const b = $(id); b.disabled = true; b.textContent = label; }
 function enBtn(id, label)  { const b = $(id); b.disabled = false; b.textContent = label; }
 
+/* ── INVENTARIO (módulo externo) ── */
+initInventario({ db, fmtFecha, fmtGs, toast, hoy, toTs });
+
 /* ── NAV ── */
 const titulos = {
-  dashboard: 'Dashboard',
-  clientes:  'Clientes',
-  ventas:    'Ventas',
-  pagos:     'Pagos',
-  compras:   'Compras',
-  egresos:   'Egresos'
+  dashboard:  'Dashboard',
+  clientes:   'Clientes',
+  ventas:     'Ventas',
+  pagos:      'Pagos',
+  compras:    'Compras',
+  egresos:    'Egresos',
+  inventario: 'Inventario'
 };
 let actual = 'dashboard';
 
@@ -971,12 +1098,13 @@ window.ir = sec => {
   $(`nav-${sec}`).classList.add('active');
   $('headerSub').textContent = titulos[sec];
   ({
-    dashboard: cargarDashboard,
-    clientes:  cargarClientes,
-    ventas:    cargarVentas,
-    pagos:     cargarPagos,
-    compras:   cargarCompras,
-    egresos:   cargarEgresos
+    dashboard:  cargarDashboard,
+    clientes:   cargarClientes,
+    ventas:     cargarVentas,
+    pagos:      cargarPagos,
+    compras:    cargarCompras,
+    egresos:    cargarEgresos,
+    inventario: () => window.cargarInventario()
   })[sec]();
 };
 
@@ -1911,7 +2039,7 @@ $('e-fecha').value  = hoy();
 /* Cerrar modales con Escape */
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    cerrarModal(); cerrarModalVenta(); cerrarModalPago();
+    cerrarModal(); cerrarModalVenta(); cerrarModalPago(); window.cerrarModalInv?.();
   }
 });
 
@@ -2071,11 +2199,14 @@ document.addEventListener('pointerdown', e => {
       if (btn.dataset.vid)    abrirModalEditarVenta(btn.dataset.vid);
       if (btn.dataset.pid)    abrirModalEditarPago(btn.dataset.pid);
       if (btn.dataset.cid)    abrirVentasCliente(btn.dataset.cid, btn.dataset.cnombre || '', btn.dataset.ctel || '');
+      if (btn.dataset.invid)  abrirModalEditarInv(btn.dataset.invid);
     }
   };
   document.addEventListener('pointerup', onUp);
   document.addEventListener('pointercancel', onUp);
 });
+
+
 </script>
 </body>
 </html>
