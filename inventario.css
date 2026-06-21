@@ -9,6 +9,16 @@
 .badge-inv-entregado  { background: rgba(201,162,39,.12);  color: #d4aa35;  border: 1px solid rgba(201,162,39,.25); }
 .badge-inv-anulado    { background: rgba(120,120,140,.10); color: #7a7a8a;  border: 1px solid rgba(120,120,140,.22); }
 
+/* ─── Botones de visión / foto ─── */
+.btn-vision {
+  padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;
+  cursor: pointer; border: 1px solid rgba(201,162,39,.35);
+  background: rgba(201,162,39,.10); color: var(--gold);
+  font-family: 'Poppins', sans-serif; transition: all .15s;
+}
+.btn-vision:hover  { background: rgba(201,162,39,.22); }
+.btn-vision:active { transform: scale(.96); }
+
 /* ─── Equivalencias y cambio ─── */
 .inv-equiv         { font-size: 11px; color: var(--gold); margin-top: 3px; min-height: 16px; }
 .inv-cambio-section { font-size: 11px; color: var(--text2); text-align: right; margin-bottom: 8px; }

@@ -293,6 +293,7 @@ function abrirModalNuevoInv() {
   actualizarFechaVenta();
   actualizarCambioModal();
   $('btn-inv-guardar').textContent   = 'Guardar';
+  if (window.resetVisionSection) window.resetVisionSection();
   $('modal-inv-overlay').classList.remove('hidden');
   setTimeout(() => $('inv-desc').focus(), 100);
 }
@@ -326,6 +327,7 @@ function abrirModalEditarInv(id) {
 
 // ─── Cerrar modal ────────────────────────────────────────────────
 function cerrarModalInv() {
+  if (window.resetVisionSection) window.resetVisionSection();
   $('modal-inv-overlay').classList.add('hidden');
 }
 
