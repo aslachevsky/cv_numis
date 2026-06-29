@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AndyS – Importación Histórica</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --gold: #C9A227; --gold-d: #a07d15;
+      --bg: #0f1117; --bg2: #161c2c;
+      --card: #1c2235; --card2: #232b42;
+      --text: #dde2f0; --text2: #7a85a0;
+      --border: #2a3452; --radius: 12px;
+    }
+    body { font-family: 'Poppins', sans-serif; background: var(--bg); color: var(--text); padding: 20px; min-height: 100vh; }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { color: var(--gold); font-size: 22px; margin-bottom: 6px; }
+    .subtitle { color: var(--text2); font-size: 13px; margin-bottom: 24px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+    .card h3 { color: var(--gold); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: .5px; }
+    .btn { padding: 12px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; transition: all .15s; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-primary { background: linear-gradient(135deg, var(--gold), var(--gold-d)); color: #1a1200; }
+    .btn-primary:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
+    .btn-danger { background: rgba(192,57,43,.15); color: #e07070; border: 1px solid rgba(192,57,43,.4); }
+    .btn-danger:hover:not(:disabled) { background: rgba(192,57,43,.25); }
+    .status { margin-top: 12px; font-size: 13px; color: var(--text2); }
+    .status.ok { color: #5dde8a; }
+    .status.err { color: #e07070; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { font-size: 10px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; padding: 8px; text-align: left; border-bottom: 2px solid var(--border); }
+    td { padding: 6px 8px; border-bottom: 1px solid rgba(42,52,82,.4); color: var(--text); }
+    tr:hover td { background: rgba(255,255,255,.02); }
+    .td-num { text-align: right; font-variant-numeric: tabular-nums; }
+    .td-cobros { color: #4A90D9; font-weight: 600; }
+    .td-compras { color: #E67E22; font-weight: 600; }
+    .td-gastos { color: #8E44AD; font-weight: 600; }
+    .resumen-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .resumen-item { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+    .resumen-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text2); margin-bottom: 4px; }
+    .resumen-value { font-size: 18px; font-weight: 700; }
+    .warning { background: rgba(230,126,34,.08); border: 1px solid rgba(230,126,34,.3); border-radius: 8px; padding: 12px; color: #e67e22; font-size: 12px; margin: 12px 0; }
+    .progress-wrap { margin-top: 14px; }
+    .progress-bar { background: var(--bg); border-radius: 8px; height: 8px; overflow: hidden; margin-bottom: 6px; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-d)); width: 0%; transition: width .3s; }
+    .progress-text { font-size: 12px; color: var(--text2); }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; }
+    .badge-pagos { background: rgba(74,144,217,.12); color: #7ab8f5; }
+    .badge-compras { background: rgba(230,126,34,.12); color: #e67e22; }
+    .badge-egresos { background: rgba(142,68,173,.12); color: #b87cda; }
+    .tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+    .tabs button { flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg2); color: var(--text2); font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'Poppins', sans-serif; }
+    .tabs button.active { background: rgba(201,162,39,.1); border-color: var(--gold); color: var(--gold); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .scroll-table { max-height: 400px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Importación Histórica</h1>
+  <p class="subtitle">
+    Importar datos de cobros, compras y gastos desde el spreadsheet histórico (2020–2026)
+    a Firestore sin afectar los datos de clientes actuales.
+  </p>
+
+  <!-- PASO 1 -->
+  <div class="card">
+    <h3>Paso 1 — Cargar datos del spreadsheet</h3>
+    <p style="font-size:13px; color:var(--text2); margin-bottom:14px">
+      Se descargarán las 7 tabs (2020–2026) del spreadsheet de Google y se parsearán los datos.
+    </p>
+    <button class="btn btn-primary" id="btn-cargar" onclick="cargarDatos()">Cargar datos</button>
+    <div class="status" id="status-cargar"></div>
+  </div>
+
+  <!-- PASO 2 -->
+  <div id="sec-resumen" style="display:none">
+    <div class="card">
+      <h3>Paso 2 — Resumen de datos cargados</h3>
+      <div id="resumen-grid" class="resumen-grid"></div>
+      <div id="resumen-tabla-wrap" style="overflow-x:auto"></div>
+      <div id="warnings"></div>
+    </div>
+
+    <div class="card">
+      <h3>Vista previa</h3>
+      <div class="tabs" id="preview-tabs"></div>
+      <div id="tab-pagos" class="tab-content"></div>
+      <div id="tab-compras" class="tab-content"></div>
+      <div id="tab-egresos" class="tab-content"></div>
+    </div>
+
+    <div class="card">
+      <h3>Paso 3 — Importar a Firestore</h3>
+      <p style="font-size:13px; color:var(--text2); margin-bottom:14px">
+        Se creará el cliente <strong>"Histórico (pre-sistema)"</strong> para los cobros,
+        y se importarán todos los registros marcados con <code>origen: "importacion"</code>.
+      </p>
+      <button class="btn btn-primary" id="btn-importar" onclick="importar()">Importar todo</button>
+      <div class="progress-wrap" id="progress-wrap" style="display:none">
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        <div class="progress-text" id="progress-text"></div>
+      </div>
+      <div class="status" id="status-importar"></div>
+    </div>
+  </div>
+
+  <!-- LIMPIEZA -->
+  <div class="card" style="margin-top:30px; border-color:rgba(192,57,43,.25)">
+    <h3 style="color:#e07070">Zona de limpieza</h3>
+    <p style="font-size:13px; color:var(--text2); margin-bottom:14px">
+      Si necesitás re-importar, primero eliminá los registros importados anteriormente.
+    </p>
+    <button class="btn btn-danger" id="btn-limpiar" onclick="limpiarImportados()">Eliminar datos importados</button>
+    <div class="status" id="status-limpiar"></div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import {
+  getFirestore, collection, addDoc, getDocs, deleteDoc,
+  query, where, doc, Timestamp, writeBatch, setDoc
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey:            "AIzaSyBOB3EZQQ8jKOyieOqt5_EebUn8ITknAfY",
+  authDomain:        "helio-produce.firebaseapp.com",
+  projectId:         "helio-produce",
+  storageBucket:     "helio-produce.firebasestorage.app",
+  messagingSenderId: "217860282947",
+  appId:             "1:217860282947:web:de5d1c000d2ff0c8efd2f6"
+});
+const db = getFirestore(app, 'andyslapry');
+
+const SHEET_ID = '1EPrV9MGu4EnsouKftG8pSL0E7B_AaRLYtRH-92xJxxw';
+
+const CONFIGS = {
+  2020: { gid: 0,          cobros: 1, compras: [2, 3], gastos: [] },
+  2021: { gid: 1399152592, cobros: 1, compras: [2],    gastos: [{ col: 4, tipo: 'Envío' }] },
+  2022: { gid: 427220672,  cobros: 1, compras: [2],    gastos: [{ col: 3, tipo: 'Gasto' }, { col: 4, tipo: 'Envío' }] },
+  2023: { gid: 1656212087, cobros: 1, compras: [2],    gastos: [{ col: 3, tipo: 'Gasto' }] },
+  2024: { gid: 1856170556, cobros: 1, compras: [2],    gastos: [{ col: 3, tipo: 'Gasto' }] },
+  2025: { gid: 1065241763, cobros: 1, compras: [2],    gastos: [{ col: 3, tipo: 'Envío' }] },
+  2026: { gid: 429821188,  cobros: 1, compras: [2],    gastos: [{ col: 3, tipo: 'Gasto' }] },
+};
+
+const $ = id => document.getElementById(id);
+const fmtGs = n => '₲ ' + Math.round(n || 0).toLocaleString('es-PY');
+
+let allPagos = [];
+let allCompras = [];
+let allEgresos = [];
+let dateWarnings = [];
+
+/* ═══════════════════════════════
+   CSV PARSING
+═══════════════════════════════ */
+function parseCSVLine(line) {
+  const fields = [];
+  let i = 0;
+  while (i <= line.length) {
+    if (i === line.length) { break; }
+    if (line[i] === '"') {
+      let field = '';
+      i++;
+      while (i < line.length) {
+        if (line[i] === '"') {
+          if (i + 1 < line.length && line[i + 1] === '"') {
+            field += '"'; i += 2;
+          } else {
+            i++; break;
+          }
+        } else {
+          field += line[i]; i++;
+        }
+      }
+      fields.push(field);
+      if (i < line.length && line[i] === ',') i++;
+    } else {
+      let end = line.indexOf(',', i);
+      if (end === -1) end = line.length;
+      fields.push(line.substring(i, end));
+      i = end + 1;
+      if (end === line.length - 1 && line[end] === ',') fields.push('');
+    }
+  }
+  return fields;
+}
+
+function parseCSV(text) {
+  return text.split(/\r?\n/).filter(l => l.trim()).map(parseCSVLine);
+}
+
+/* ═══════════════════════════════
+   DATE PARSING
+═══════════════════════════════ */
+function parseDate(raw, year) {
+  if (!raw || !raw.trim()) return null;
+  let s = raw.trim()
+    .replace(/^\(/, '').replace(/\)$/, '')
+    .replace(/^["']+|["']+$/g, '')
+    .replace(/^,+|,+$/g, '')
+    .replace(/@/g, '0')
+    .replace(/\/\/+/g, '/')
+    .replace(/\/+$/, '')
+    .trim();
+
+  if (!s || /^[\s,]+$/.test(s)) return null;
+
+  let m, day, month, yr;
+
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4,5})$/);
+  if (m) {
+    day = parseInt(m[1]); month = parseInt(m[2]);
+    yr = parseInt(m[3].substring(0, 4));
+    if (day > 0 && day <= 31 && month > 0 && month <= 12)
+      return new Date(yr, month - 1, day, 12, 0, 0);
+  }
+
+  m = s.match(/^(\d{1,2})\/(\d{1,2})$/);
+  if (m) {
+    day = parseInt(m[1]); month = parseInt(m[2]);
+    if (day > 0 && day <= 31 && month > 0 && month <= 12)
+      return new Date(year, month - 1, day, 12, 0, 0);
+  }
+
+  m = s.match(/^(\d{1,2})$/);
+  if (m) {
+    return null;
+  }
+
+  return null;
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  return d.toLocaleDateString('es-PY', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+/* ═══════════════════════════════
+   NUMBER PARSING
+═══════════════════════════════ */
+function parseNum(raw) {
+  if (!raw || raw === '') return 0;
+  const s = String(raw).replace(/"/g, '').replace(/,/g, '').replace(/\s/g, '').trim();
+  const n = parseInt(s, 10);
+  return isNaN(n) || n <= 0 ? 0 : n;
+}
+
+/* ═══════════════════════════════
+   FETCH CSV FROM GOOGLE SHEETS
+═══════════════════════════════ */
+async function fetchCSV(gid) {
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
+  const resp = await fetch(url, { redirect: 'follow' });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status} para gid=${gid}`);
+  return await resp.text();
+}
+
+/* ═══════════════════════════════
+   PROCESS ONE YEAR
+═══════════════════════════════ */
+function processYear(year, csvText) {
+  const config = CONFIGS[year];
+  const rows = parseCSV(csvText);
+  const pagos = [], compras = [], egresos = [];
+
+  for (let i = 1; i < rows.length; i++) {
+    const cols = rows[i];
+    const rawDate = (cols[0] || '').trim();
+
+    if (!rawDate || /^\s*$/.test(rawDate)) continue;
+    if (/^[,\s]*$/.test(rawDate)) continue;
+
+    const fecha = parseDate(rawDate, year);
+    if (!fecha) {
+      dateWarnings.push({ year, row: i + 1, raw: rawDate });
+      continue;
+    }
+
+    const ts = Timestamp.fromDate(fecha);
+
+    const cobros = parseNum(cols[config.cobros]);
+    if (cobros > 0) {
+      pagos.push({ fecha: ts, monto: cobros, year, fechaStr: fmtDate(fecha) });
+    }
+
+    let totalCompras = 0;
+    for (const ci of config.compras) {
+      totalCompras += parseNum(cols[ci]);
+    }
+    if (totalCompras > 0) {
+      compras.push({ fecha: ts, monto: totalCompras, year, fechaStr: fmtDate(fecha) });
+    }
+
+    for (const g of config.gastos) {
+      const val = parseNum(cols[g.col]);
+      if (val > 0) {
+        egresos.push({ fecha: ts, monto: val, tipo: g.tipo, year, fechaStr: fmtDate(fecha) });
+      }
+    }
+  }
+
+  return { pagos, compras, egresos };
+}
+
+/* ═══════════════════════════════
+   CARGAR DATOS
+═══════════════════════════════ */
+window.cargarDatos = async function() {
+  const btn = $('btn-cargar');
+  const status = $('status-cargar');
+  btn.disabled = true;
+  btn.textContent = 'Cargando...';
+
+  allPagos = []; allCompras = []; allEgresos = []; dateWarnings = [];
+
+  const years = [2020, 2021, 2022, 2023, 2024, 2025, 2026];
+
+  try {
+    for (const year of years) {
+      status.textContent = `Descargando ${year}...`;
+      status.className = 'status';
+      const csvText = await fetchCSV(CONFIGS[year].gid);
+      const result = processYear(year, csvText);
+      allPagos.push(...result.pagos);
+      allCompras.push(...result.compras);
+      allEgresos.push(...result.egresos);
+      status.textContent = `${year} ✓ — ${result.pagos.length} cobros, ${result.compras.length} compras, ${result.egresos.length} egresos`;
+    }
+
+    status.textContent = `Carga completa: ${allPagos.length} cobros, ${allCompras.length} compras, ${allEgresos.length} egresos`;
+    status.className = 'status ok';
+    btn.textContent = 'Datos cargados ✓';
+    renderResumen();
+    $('sec-resumen').style.display = 'block';
+  } catch (e) {
+    status.textContent = 'Error: ' + e.message;
+    status.className = 'status err';
+    btn.disabled = false;
+    btn.textContent = 'Reintentar';
+  }
+};
+
+/* ═══════════════════════════════
+   RENDER RESUMEN
+═══════════════════════════════ */
+function renderResumen() {
+  const totalPagos = allPagos.reduce((s, r) => s + r.monto, 0);
+  const totalCompras = allCompras.reduce((s, r) => s + r.monto, 0);
+  const totalEgresos = allEgresos.reduce((s, r) => s + r.monto, 0);
+  const totalDocs = allPagos.length + allCompras.length + allEgresos.length;
+
+  $('resumen-grid').innerHTML = `
+    <div class="resumen-item">
+      <div class="resumen-label">Total cobros</div>
+      <div class="resumen-value td-cobros">${fmtGs(totalPagos)}</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:2px">${allPagos.length} registros</div>
+    </div>
+    <div class="resumen-item">
+      <div class="resumen-label">Total compras</div>
+      <div class="resumen-value td-compras">${fmtGs(totalCompras)}</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:2px">${allCompras.length} registros</div>
+    </div>
+    <div class="resumen-item">
+      <div class="resumen-label">Total egresos</div>
+      <div class="resumen-value td-gastos">${fmtGs(totalEgresos)}</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:2px">${allEgresos.length} registros</div>
+    </div>
+    <div class="resumen-item">
+      <div class="resumen-label">Documentos a crear</div>
+      <div class="resumen-value" style="color:var(--gold)">${totalDocs.toLocaleString()}</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:2px">+ 1 cliente histórico</div>
+    </div>`;
+
+  const years = [2020, 2021, 2022, 2023, 2024, 2025, 2026];
+  let tablaHTML = '<table><thead><tr><th>Año</th><th class="td-num">Cobros</th><th class="td-num">Monto</th><th class="td-num">Compras</th><th class="td-num">Monto</th><th class="td-num">Egresos</th><th class="td-num">Monto</th></tr></thead><tbody>';
+  for (const y of years) {
+    const p = allPagos.filter(r => r.year === y);
+    const c = allCompras.filter(r => r.year === y);
+    const e = allEgresos.filter(r => r.year === y);
+    tablaHTML += `<tr>
+      <td><strong>${y}</strong></td>
+      <td class="td-num">${p.length}</td>
+      <td class="td-num td-cobros">${fmtGs(p.reduce((s,r)=>s+r.monto,0))}</td>
+      <td class="td-num">${c.length}</td>
+      <td class="td-num td-compras">${fmtGs(c.reduce((s,r)=>s+r.monto,0))}</td>
+      <td class="td-num">${e.length}</td>
+      <td class="td-num td-gastos">${fmtGs(e.reduce((s,r)=>s+r.monto,0))}</td>
+    </tr>`;
+  }
+  tablaHTML += '</tbody></table>';
+  $('resumen-tabla-wrap').innerHTML = tablaHTML;
+
+  if (dateWarnings.length > 0) {
+    $('warnings').innerHTML = `<div class="warning">
+      ⚠ ${dateWarnings.length} fecha(s) no se pudieron parsear y fueron omitidas:
+      <ul style="margin-top:6px;padding-left:18px">${dateWarnings.slice(0, 10).map(w =>
+        `<li>${w.year} fila ${w.row}: "${w.raw}"</li>`
+      ).join('')}${dateWarnings.length > 10 ? `<li>...y ${dateWarnings.length - 10} más</li>` : ''}</ul>
+    </div>`;
+  }
+
+  renderPreview();
+}
+
+function renderPreview() {
+  $('preview-tabs').innerHTML = `
+    <button class="active" onclick="showTab('pagos')">Cobros (${allPagos.length})</button>
+    <button onclick="showTab('compras')">Compras (${allCompras.length})</button>
+    <button onclick="showTab('egresos')">Egresos (${allEgresos.length})</button>`;
+
+  const maxPreview = 30;
+
+  $('tab-pagos').className = 'tab-content active';
+  $('tab-pagos').innerHTML = '<div class="scroll-table"><table><thead><tr><th>Fecha</th><th>Año</th><th class="td-num">Monto</th></tr></thead><tbody>' +
+    allPagos.slice(0, maxPreview).map(r => `<tr><td>${r.fechaStr}</td><td>${r.year}</td><td class="td-num td-cobros">${fmtGs(r.monto)}</td></tr>`).join('') +
+    (allPagos.length > maxPreview ? `<tr><td colspan="3" style="color:var(--text2);text-align:center">...y ${allPagos.length - maxPreview} más</td></tr>` : '') +
+    '</tbody></table></div>';
+
+  $('tab-compras').innerHTML = '<div class="scroll-table"><table><thead><tr><th>Fecha</th><th>Año</th><th class="td-num">Monto</th></tr></thead><tbody>' +
+    allCompras.slice(0, maxPreview).map(r => `<tr><td>${r.fechaStr}</td><td>${r.year}</td><td class="td-num td-compras">${fmtGs(r.monto)}</td></tr>`).join('') +
+    (allCompras.length > maxPreview ? `<tr><td colspan="3" style="color:var(--text2);text-align:center">...y ${allCompras.length - maxPreview} más</td></tr>` : '') +
+    '</tbody></table></div>';
+
+  $('tab-egresos').innerHTML = '<div class="scroll-table"><table><thead><tr><th>Fecha</th><th>Año</th><th>Tipo</th><th class="td-num">Monto</th></tr></thead><tbody>' +
+    allEgresos.slice(0, maxPreview).map(r => `<tr><td>${r.fechaStr}</td><td>${r.year}</td><td><span class="badge badge-egresos">${r.tipo}</span></td><td class="td-num td-gastos">${fmtGs(r.monto)}</td></tr>`).join('') +
+    (allEgresos.length > maxPreview ? `<tr><td colspan="4" style="color:var(--text2);text-align:center">...y ${allEgresos.length - maxPreview} más</td></tr>` : '') +
+    '</tbody></table></div>';
+}
+
+window.showTab = function(tab) {
+  document.querySelectorAll('.tab-content').forEach(el => el.className = 'tab-content');
+  document.querySelectorAll('.tabs button').forEach(el => el.classList.remove('active'));
+  $('tab-' + tab).className = 'tab-content active';
+  const idx = { pagos: 0, compras: 1, egresos: 2 }[tab];
+  $('preview-tabs').children[idx].classList.add('active');
+};
+
+/* ═══════════════════════════════
+   IMPORTAR A FIRESTORE
+═══════════════════════════════ */
+window.importar = async function() {
+  const btn = $('btn-importar');
+  const status = $('status-importar');
+  const progressWrap = $('progress-wrap');
+  const progressFill = $('progress-fill');
+  const progressText = $('progress-text');
+
+  if (!confirm(`¿Importar ${(allPagos.length + allCompras.length + allEgresos.length).toLocaleString()} registros a Firestore?\n\nEsta operación puede demorar unos minutos.`)) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Importando...';
+  progressWrap.style.display = 'block';
+
+  try {
+    let existingSnap = await getDocs(query(collection(db, 'compras'), where('origen', '==', 'importacion')));
+    if (!existingSnap.empty) {
+      if (!confirm(`Ya existen ${existingSnap.size} registros importados en compras. ¿Continuar de todos modos?\n\nSi querés re-importar, usá "Eliminar datos importados" primero.`)) {
+        btn.disabled = false;
+        btn.textContent = 'Importar todo';
+        progressWrap.style.display = 'none';
+        return;
+      }
+    }
+
+    /* 1. Crear o encontrar cliente histórico */
+    status.textContent = 'Buscando/creando cliente histórico...';
+    let historicoId = null;
+    const clSnap = await getDocs(query(collection(db, 'clientes'), where('nombre', '==', 'Histórico (pre-sistema)')));
+    if (!clSnap.empty) {
+      historicoId = clSnap.docs[0].id;
+    } else {
+      const ref = await addDoc(collection(db, 'clientes'), {
+        nombre: 'Histórico (pre-sistema)',
+        identificacion: '',
+        telefono: '',
+        email: '',
+        direccion: '',
+        saldoPendiente: 0,
+        origen: 'importacion'
+      });
+      historicoId = ref.id;
+    }
+
+    const totalDocs = allPagos.length + allCompras.length + allEgresos.length;
+    let done = 0;
+    const BATCH_SIZE = 400;
+
+    function updateProgress() {
+      const pct = Math.round((done / totalDocs) * 100);
+      progressFill.style.width = pct + '%';
+      progressText.textContent = `${done.toLocaleString()} / ${totalDocs.toLocaleString()} (${pct}%)`;
+    }
+
+    /* 2. Importar pagos (cobros) */
+    status.textContent = 'Importando cobros...';
+    for (let i = 0; i < allPagos.length; i += BATCH_SIZE) {
+      const batch = writeBatch(db);
+      const chunk = allPagos.slice(i, i + BATCH_SIZE);
+      for (const r of chunk) {
+        const ref = doc(collection(db, 'pagos'));
+        batch.set(ref, {
+          clienteId: historicoId,
+          clienteNombre: 'Histórico (pre-sistema)',
+          monto: r.monto,
+          fecha: r.fecha,
+          observacion: `Cobro diario (${r.year})`,
+          origen: 'importacion'
+        });
+      }
+      await batch.commit();
+      done += chunk.length;
+      updateProgress();
+    }
+
+    /* 3. Importar compras */
+    status.textContent = 'Importando compras...';
+    for (let i = 0; i < allCompras.length; i += BATCH_SIZE) {
+      const batch = writeBatch(db);
+      const chunk = allCompras.slice(i, i + BATCH_SIZE);
+      for (const r of chunk) {
+        const ref = doc(collection(db, 'compras'));
+        batch.set(ref, {
+          monto: r.monto,
+          fecha: r.fecha,
+          observacion: `Compra histórica (${r.year})`,
+          proveedor: '',
+          origen: 'importacion'
+        });
+      }
+      await batch.commit();
+      done += chunk.length;
+      updateProgress();
+    }
+
+    /* 4. Importar egresos */
+    status.textContent = 'Importando egresos...';
+    for (let i = 0; i < allEgresos.length; i += BATCH_SIZE) {
+      const batch = writeBatch(db);
+      const chunk = allEgresos.slice(i, i + BATCH_SIZE);
+      for (const r of chunk) {
+        const ref = doc(collection(db, 'egresos'));
+        batch.set(ref, {
+          monto: r.monto,
+          fecha: r.fecha,
+          descripcion: `${r.tipo} histórico (${r.year})`,
+          categoria: r.tipo,
+          origen: 'importacion'
+        });
+      }
+      await batch.commit();
+      done += chunk.length;
+      updateProgress();
+    }
+
+    progressFill.style.width = '100%';
+    status.textContent = `Importación completa: ${totalDocs.toLocaleString()} registros creados ✓`;
+    status.className = 'status ok';
+    btn.textContent = 'Importación completa ✓';
+  } catch (e) {
+    status.textContent = 'Error: ' + e.message;
+    status.className = 'status err';
+    btn.disabled = false;
+    btn.textContent = 'Reintentar';
+  }
+};
+
+/* ═══════════════════════════════
+   LIMPIAR DATOS IMPORTADOS
+═══════════════════════════════ */
+window.limpiarImportados = async function() {
+  const btn = $('btn-limpiar');
+  const status = $('status-limpiar');
+
+  if (!confirm('¿Eliminar TODOS los registros con origen="importacion"?\n\nEsto incluye cobros, compras, egresos y el cliente histórico.')) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Eliminando...';
+  status.textContent = 'Contando registros...';
+
+  try {
+    let totalDeleted = 0;
+
+    for (const col of ['pagos', 'compras', 'egresos', 'clientes']) {
+      status.textContent = `Eliminando de ${col}...`;
+      const snap = await getDocs(query(collection(db, col), where('origen', '==', 'importacion')));
+      const BATCH_SIZE = 400;
+      const docs = snap.docs;
+      for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+        const batch = writeBatch(db);
+        const chunk = docs.slice(i, i + BATCH_SIZE);
+        for (const d of chunk) {
+          batch.delete(d.ref);
+        }
+        await batch.commit();
+        totalDeleted += chunk.length;
+      }
+    }
+
+    status.textContent = `Eliminados ${totalDeleted} registros importados ✓`;
+    status.className = 'status ok';
+    btn.textContent = 'Limpieza completa ✓';
+  } catch (e) {
+    status.textContent = 'Error: ' + e.message;
+    status.className = 'status err';
+    btn.disabled = false;
+    btn.textContent = 'Reintentar';
+  }
+};
+</script>
+</body>
+</html>

@@ -24,11 +24,38 @@ export function initVision({ apiKey, toast }) {
   _apiKey = apiKey;
   _toast  = toast;
 
+  inyectarHTML();
+
   window.iniciarVisionCamara  = () => $('inv-vision-file-cam').click();
   window.iniciarVisionGaleria = () => $('inv-vision-file-gal').click();
   window.procesarFotoVision   = procesarFoto;
   window.cerrarVisionPreview  = cerrarPreview;
   window.resetVisionSection   = resetSection;
+}
+
+function inyectarHTML() {
+  const anchor = $('inv-vision-anchor');
+  if (!anchor) return;
+  anchor.outerHTML = `
+    <div id="inv-vision-section" style="margin-bottom:14px">
+      <div style="display:flex; gap:8px; align-items:center">
+        <button type="button" class="btn-vision" onclick="iniciarVisionCamara()">📷 Cámara</button>
+        <button type="button" class="btn-vision" onclick="iniciarVisionGaleria()">🖼️ Galería</button>
+        <span style="font-size:10.5px; color:var(--text2)">Identificar con foto</span>
+      </div>
+      <input type="file" id="inv-vision-file-cam" accept="image/*" capture="environment" style="display:none" onchange="procesarFotoVision(this)">
+      <input type="file" id="inv-vision-file-gal" accept="image/*" style="display:none" onchange="procesarFotoVision(this)">
+      <div id="inv-vision-preview" class="hidden" style="margin-top:10px">
+        <div style="display:flex; gap:10px; align-items:flex-start">
+          <img id="inv-vision-img" style="width:72px; height:72px; object-fit:cover; border-radius:8px; border:1px solid var(--border)">
+          <div style="flex:1; min-width:0">
+            <div id="inv-vision-status" style="font-size:12px; color:var(--text2)"></div>
+            <div id="inv-vision-results"></div>
+          </div>
+          <button type="button" class="modal-close" onclick="cerrarVisionPreview()" style="position:static; font-size:14px; flex-shrink:0">✕</button>
+        </div>
+      </div>
+    </div>`;
 }
 
 function resetSection() {

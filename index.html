@@ -22,6 +22,7 @@
       --pagos:     #27AE60;
       --compras:   #E67E22;
       --egresos:   #8E44AD;
+      --expos:     #16A085;
       --dash:      #C9A227;
       --bg:        #0f1117;
       --bg2:       #161c2c;
@@ -572,6 +573,25 @@
         <div class="kpi-value" id="kpi-egresos">₲ 0</div>
         <div class="kpi-sub"  id="kpi-egresos-cnt">—</div>
       </div>
+      <div class="kpi-card" style="grid-column:1/-1">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px">
+          <div>
+            <div class="kpi-label">Resultado del período</div>
+            <div class="kpi-value" id="kpi-resultado" style="font-size:20px">₲ 0</div>
+            <div class="kpi-sub" id="kpi-resultado-det">—</div>
+          </div>
+          <div style="text-align:center">
+            <div class="kpi-label">Pendiente (período)</div>
+            <div class="kpi-value" id="kpi-pendiente" style="font-size:20px; color:#e07070">₲ 0</div>
+            <div class="kpi-sub" id="kpi-pendiente-cnt">—</div>
+          </div>
+          <div style="text-align:right">
+            <div class="kpi-label">Pendiente total</div>
+            <div class="kpi-value" id="kpi-pendiente-total" style="font-size:20px; color:#e07070">₲ 0</div>
+            <div class="kpi-sub" id="kpi-pendiente-total-cnt">—</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="dash-section-title">Ventas vs Cobros — últimos 6 meses</div>
@@ -583,6 +603,7 @@
     <div class="card" style="padding:10px 14px">
       <div id="dash-top-clientes"><div class="cargando">Cargando...</div></div>
     </div>
+
   </div>
 </div>
 
@@ -683,6 +704,18 @@
       <div id="mv-saldo-cliente" style="display:none; margin-top:4px; font-size:13px; font-weight:600; color:#e07070;"></div>
     </div>
     <div class="form-group">
+      <label>Tipo de artículo</label>
+      <div class="select-wrap">
+        <select id="mv-tipo">
+          <option value="moneda">Moneda</option>
+          <option value="billete">Billete</option>
+          <option value="medalla">Medalla</option>
+          <option value="token">Token</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
       <label>Descripción</label>
       <textarea id="mv-desc" placeholder="Detalle de la venta" style="min-height:56px"></textarea>
     </div>
@@ -728,6 +761,7 @@
       <button class="btn-nuevo" onclick="abrirModalNuevoPago()">+ Nuevo</button>
     </div>
     <div class="cl-count" id="p-count"></div>
+    <div id="p-total" style="display:none; padding:6px 12px; margin-bottom:6px; font-size:14px; font-weight:600; color:var(--pagos); background:rgba(39,174,96,.1); border-radius:6px;"></div>
     <div id="lista-pagos" class="cargando">Cargando...</div>
   </div>
 </div>
@@ -767,7 +801,44 @@
 <!-- ═══════════ COMPRAS ═══════════ -->
 <div class="section" id="sec-compras">
   <div class="card">
-    <div class="card-title">Nueva compra</div>
+    <div class="cl-toolbar">
+      <input class="cl-search" id="co-fecha-desde" type="date" onchange="cargarCompras()" title="Fecha desde">
+      <input class="cl-search" id="co-fecha-hasta" type="date" onchange="cargarCompras()" title="Fecha hasta">
+      <input class="cl-search" id="co-buscar" placeholder="🔍 Buscar..."
+             oninput="filtrarCompras()" autocomplete="off">
+      <select class="cl-sort" id="co-fil-orden" onchange="filtrarCompras()">
+        <option value="fecha-desc">Más reciente</option>
+        <option value="fecha-asc">Más antiguo</option>
+        <option value="monto-mayor">Mayor monto</option>
+        <option value="monto-menor">Menor monto</option>
+      </select>
+      <button class="btn-nuevo" onclick="abrirModalNuevaCompra()">+ Nueva</button>
+    </div>
+    <div class="cl-count" id="co-count"></div>
+    <div id="co-total" style="display:none; padding:6px 12px; margin-bottom:6px; font-size:14px; font-weight:600; color:var(--compras); background:rgba(230,126,34,.1); border-radius:6px;"></div>
+    <div id="lista-compras" class="cargando">Cargando...</div>
+  </div>
+</div>
+
+<!-- ═══════════ MODAL COMPRA ═══════════ -->
+<div class="modal-overlay hidden" id="modal-compra-overlay">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="mc-titulo">Nueva compra</span>
+      <button class="modal-close" onclick="cerrarModalCompra()">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Tipo de artículo</label>
+      <div class="select-wrap">
+        <select id="co-tipo">
+          <option value="moneda">Moneda</option>
+          <option value="billete">Billete</option>
+          <option value="medalla">Medalla</option>
+          <option value="token">Token</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+    </div>
     <div class="form-group">
       <label>Fecha *</label>
       <input type="date" id="co-fecha">
@@ -784,18 +855,42 @@
       <label>Proveedor</label>
       <input type="text" id="co-prov" placeholder="Opcional" autocomplete="off">
     </div>
-    <button class="btn btn-primary" id="btn-co" onclick="guardarCompra()">Guardar compra</button>
-  </div>
-  <div class="card">
-    <div class="card-title">Últimas compras</div>
-    <div id="lista-compras" class="cargando">Cargando...</div>
+    <div class="modal-btns">
+      <button class="btn btn-cancel" onclick="cerrarModalCompra()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-co" onclick="guardarCompra()">Guardar</button>
+    </div>
   </div>
 </div>
 
 <!-- ═══════════ EGRESOS ═══════════ -->
 <div class="section" id="sec-egresos">
   <div class="card">
-    <div class="card-title">Nuevo egreso extraordinario</div>
+    <div class="cl-toolbar">
+      <input class="cl-search" id="e-fecha-desde" type="date" onchange="cargarEgresos()" title="Fecha desde">
+      <input class="cl-search" id="e-fecha-hasta" type="date" onchange="cargarEgresos()" title="Fecha hasta">
+      <input class="cl-search" id="e-buscar" placeholder="🔍 Buscar..."
+             oninput="filtrarEgresos()" autocomplete="off">
+      <select class="cl-sort" id="e-fil-orden" onchange="filtrarEgresos()">
+        <option value="fecha-desc">Más reciente</option>
+        <option value="fecha-asc">Más antiguo</option>
+        <option value="monto-mayor">Mayor monto</option>
+        <option value="monto-menor">Menor monto</option>
+      </select>
+      <button class="btn-nuevo" onclick="abrirModalNuevoEgreso()">+ Nuevo</button>
+    </div>
+    <div class="cl-count" id="e-count"></div>
+    <div id="e-total" style="display:none; padding:6px 12px; margin-bottom:6px; font-size:14px; font-weight:600; color:var(--egresos); background:rgba(142,68,173,.1); border-radius:6px;"></div>
+    <div id="lista-egresos" class="cargando">Cargando...</div>
+  </div>
+</div>
+
+<!-- ═══════════ MODAL EGRESO ═══════════ -->
+<div class="modal-overlay hidden" id="modal-egreso-overlay">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="me-titulo">Nuevo egreso</span>
+      <button class="modal-close" onclick="cerrarModalEgreso()">✕</button>
+    </div>
     <div class="form-group">
       <label>Fecha *</label>
       <input type="date" id="e-fecha">
@@ -812,11 +907,10 @@
       <label>Categoría</label>
       <input type="text" id="e-cat" placeholder="Opcional" autocomplete="off">
     </div>
-    <button class="btn btn-primary" id="btn-e" onclick="guardarEgreso()">Guardar egreso</button>
-  </div>
-  <div class="card">
-    <div class="card-title">Últimos egresos</div>
-    <div id="lista-egresos" class="cargando">Cargando...</div>
+    <div class="modal-btns">
+      <button class="btn btn-cancel" onclick="cerrarModalEgreso()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-e" onclick="guardarEgreso()">Guardar</button>
+    </div>
   </div>
 </div>
 
@@ -853,6 +947,26 @@
   </div>
 </div>
 
+<!-- ═══════════ EXPOS / FERIAS ═══════════ -->
+<div class="section" id="sec-expos">
+  <div class="card">
+    <div class="cl-toolbar">
+      <div class="select-wrap" style="flex:1; min-width:0">
+        <select class="cl-sort" id="ex-fil-expo" onchange="filtrarExpos()" style="width:100%">
+          <option value="">— Todos los eventos —</option>
+        </select>
+      </div>
+      <button class="btn-nuevo" onclick="abrirModalNuevoEvento()">+ Evento</button>
+      <button class="btn-nuevo" id="btn-nueva-expo-venta" style="display:none; background:linear-gradient(135deg,var(--expos),#0e8c73);color:#fff" onclick="abrirModalNuevaExpoVenta()">+ Venta</button>
+      <button class="btn-nuevo" id="btn-finalizar-expo" style="display:none; background:linear-gradient(135deg,var(--primary),var(--primary-d));color:#fff" onclick="finalizarExpo()">Finalizar</button>
+    </div>
+    <div class="cl-count" id="ex-count"></div>
+    <div id="ex-resumen-expo" style="display:none; padding:10px 12px; margin-bottom:6px; font-size:13px; color:var(--text); background:var(--card2); border:1px solid var(--border); border-radius:6px;"></div>
+    <div id="ex-total" style="display:none; padding:6px 12px; margin-bottom:6px; font-size:14px; font-weight:600; color:var(--expos); background:rgba(22,160,133,.1); border-radius:6px;"></div>
+    <div id="lista-expos" class="cargando">Cargando...</div>
+  </div>
+</div>
+
 <!-- ═══════════ NAV ═══════════ -->
 <nav>
   <button class="active" id="nav-dashboard" onclick="ir('dashboard')">
@@ -872,6 +986,9 @@
   </button>
   <button id="nav-egresos" onclick="ir('egresos')">
     <span class="icon">📤</span>Egresos
+  </button>
+  <button id="nav-expos" onclick="ir('expos')">
+    <span class="icon">🎪</span>Expos
   </button>
   <button id="nav-inventario" onclick="ir('inventario')">
     <span class="icon">📦</span>Inventario
@@ -906,26 +1023,7 @@
     </div>
     <div class="inv-cambio-section" id="inv-cambio-modal" style="margin-bottom:14px; text-align:left; font-size:12px; color:var(--text2)"></div>
 
-    <!-- ── Identificación por foto ── -->
-    <div id="inv-vision-section" style="margin-bottom:14px">
-      <div style="display:flex; gap:8px; align-items:center">
-        <button type="button" class="btn-vision" onclick="iniciarVisionCamara()">📷 Cámara</button>
-        <button type="button" class="btn-vision" onclick="iniciarVisionGaleria()">🖼️ Galería</button>
-        <span style="font-size:10.5px; color:var(--text2)">Identificar con foto</span>
-      </div>
-      <input type="file" id="inv-vision-file-cam" accept="image/*" capture="environment" style="display:none" onchange="procesarFotoVision(this)">
-      <input type="file" id="inv-vision-file-gal" accept="image/*" style="display:none" onchange="procesarFotoVision(this)">
-      <div id="inv-vision-preview" class="hidden" style="margin-top:10px">
-        <div style="display:flex; gap:10px; align-items:flex-start">
-          <img id="inv-vision-img" style="width:72px; height:72px; object-fit:cover; border-radius:8px; border:1px solid var(--border)">
-          <div style="flex:1; min-width:0">
-            <div id="inv-vision-status" style="font-size:12px; color:var(--text2)"></div>
-            <div id="inv-vision-results"></div>
-          </div>
-          <button type="button" class="modal-close" onclick="cerrarVisionPreview()" style="position:static; font-size:14px; flex-shrink:0">✕</button>
-        </div>
-      </div>
-    </div>
+    <div id="inv-vision-anchor"></div>
 
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
       <div class="form-group" style="margin-bottom:0">
@@ -1074,6 +1172,90 @@
   </div>
 </div>
 
+<!-- ═══════════ MODAL EXPO (EVENTO) ═══════════ -->
+<div class="modal-overlay hidden" id="modal-expo-overlay">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="mex-titulo">Nuevo evento</span>
+      <button class="modal-close" onclick="cerrarModalExpo()">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Nombre del evento *</label>
+      <input type="text" id="mex-nombre" placeholder="Ej: Feria de Numismática 2026" autocomplete="off">
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+      <div class="form-group" style="margin-bottom:0">
+        <label>Fecha inicio *</label>
+        <input type="date" id="mex-fecha-inicio">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Fecha fin *</label>
+        <input type="date" id="mex-fecha-fin">
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:12px">
+      <label>Ubicación</label>
+      <input type="text" id="mex-ubicacion" placeholder="Opcional" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label>Costo de participación (₲)</label>
+      <input type="text" id="mex-costo" placeholder="0" inputmode="numeric" autocomplete="off" oninput="fmtMontoInput(this)">
+    </div>
+    <div class="form-group">
+      <label>Comentario</label>
+      <textarea id="mex-comentario" placeholder="Notas adicionales (opcional)" style="min-height:48px"></textarea>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-cancel" onclick="cerrarModalExpo()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-mex-guardar" onclick="guardarModalExpo()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ MODAL EXPO VENTA ═══════════ -->
+<div class="modal-overlay hidden" id="modal-exv-overlay">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="mexv-titulo">Nueva venta en expo</span>
+      <button class="modal-close" onclick="cerrarModalExpoVenta()">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Evento *</label>
+      <div class="select-wrap">
+        <select id="mexv-expo"><option value="">Seleccionar evento...</option></select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Tipo de artículo</label>
+      <div class="select-wrap">
+        <select id="mexv-tipo">
+          <option value="moneda">Moneda</option>
+          <option value="billete">Billete</option>
+          <option value="medalla">Medalla</option>
+          <option value="token">Token</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Descripción</label>
+      <textarea id="mexv-desc" placeholder="Detalle de la venta" style="min-height:56px"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Fecha *</label>
+      <input type="date" id="mexv-fecha">
+    </div>
+    <div class="form-group">
+      <label>Monto (₲) *</label>
+      <input type="text" id="mexv-monto" placeholder="0" inputmode="numeric" autocomplete="off" oninput="fmtMontoInput(this)">
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-cancel" onclick="cerrarModalExpoVenta()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-mexv-guardar" onclick="guardarModalExpoVenta()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 import {
@@ -1187,6 +1369,7 @@ const titulos = {
   pagos:      'Pagos',
   compras:    'Compras',
   egresos:    'Egresos',
+  expos:      'Expos / Ferias',
   inventario: 'Inventario'
 };
 let actual = 'dashboard';
@@ -1205,6 +1388,7 @@ window.ir = sec => {
     pagos:      cargarPagos,
     compras:    cargarCompras,
     egresos:    cargarEgresos,
+    expos:      cargarExpos,
     inventario: () => window.cargarInventario()
   })[sec]();
 };
@@ -1492,7 +1676,7 @@ function renderTablaVentas(lista) {
         <tr>
           <td>
             <div class="td-nombre" title="${v.clienteNombre}">${v.clienteNombre}</div>
-            ${v.descripcion ? `<div class="td-id">${v.descripcion}</div>` : ''}
+            <div class="td-id">${v.tipoArticulo ? v.tipoArticulo.charAt(0).toUpperCase() + v.tipoArticulo.slice(1) : ''}${v.tipoArticulo && v.descripcion ? ' · ' : ''}${v.descripcion || ''}</div>
           </td>
           <td class="td-id" style="white-space:nowrap">${fmtFecha(v.fecha)}</td>
           <td class="td-saldo" style="${v.estado==='anulado'?'text-decoration:line-through;opacity:.5':''}">${fmtGs(v.monto)}</td>
@@ -1537,6 +1721,7 @@ window.abrirModalNuevaVenta = function() {
   syncSelectClientes('mv-cliente');
   $('mv-cliente').value = $('v-fil-cliente')?.value || '';
   mostrarSaldoCliente();
+  $('mv-tipo').value = 'moneda';
   $('mv-desc').value = ''; $('mv-fecha').value = hoy();
   $('mv-monto').value = '0'; $('mv-estado').value = 'pendiente';
   $('mv-estado-grupo').style.display = 'none';
@@ -1553,6 +1738,7 @@ window.abrirModalEditarVenta = function(id) {
   syncSelectClientes('mv-cliente');
   $('mv-cliente').value = v.clienteId || '';
   mostrarSaldoCliente();
+  $('mv-tipo').value    = v.tipoArticulo || 'moneda';
   $('mv-desc').value    = v.descripcion || '';
   $('mv-fecha').value   = v.fecha?.toDate ? v.fecha.toDate().toISOString().split('T')[0] : hoy();
   $('mv-monto').value   = Math.round(v.monto || 0).toLocaleString('es-PY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -1584,6 +1770,7 @@ window.guardarModalVenta = async function() {
     if (esNuevo) {
       await addDoc(collection(db,'ventas'), {
         clienteId, clienteNombre,
+        tipoArticulo: $('mv-tipo').value,
         descripcion: $('mv-desc').value.trim(),
         fecha: toTs(fecha), monto, estado: 'pendiente'
       });
@@ -1599,6 +1786,7 @@ window.guardarModalVenta = async function() {
 
       await updateDoc(doc(db,'ventas', ventaEditId), {
         clienteId, clienteNombre,
+        tipoArticulo: $('mv-tipo').value,
         descripcion: $('mv-desc').value.trim(),
         fecha: toTs(fecha), monto, estado
       });
@@ -1741,6 +1929,18 @@ window.filtrarPagos = function() {
 
   const cnt = $('p-count');
   if (cnt) cnt.textContent = `${lista.length} pago${lista.length !== 1 ? 's' : ''}`;
+
+  const totalDiv = $('p-total');
+  if (totalDiv) {
+    const total = lista.reduce((s, p) => s + (p.monto || 0), 0);
+    if (total > 0) {
+      totalDiv.textContent = `Total del período: ${fmtGs(total)}`;
+      totalDiv.style.display = 'block';
+    } else {
+      totalDiv.style.display = 'none';
+    }
+  }
+
   renderTablaPagos(lista);
 };
 
@@ -1865,26 +2065,133 @@ window.guardarModalPago = async function() {
 /* ══════════════════════════
    COMPRAS
 ══════════════════════════ */
+let comprasCache = [];
+let compraModo = 'nuevo';
+let compraEditId = null;
+let compraEditData = null;
+
 async function cargarCompras() {
+  const desde = $('co-fecha-desde')?.value || '';
+  const hasta = $('co-fecha-hasta')?.value || '';
+  if (!desde || !hasta) {
+    $('lista-compras').innerHTML = '<div class="empty" style="padding:32px 0">Seleccioná un rango de fechas para ver compras</div>';
+    if ($('co-count')) $('co-count').textContent = '';
+    if ($('co-total')) $('co-total').style.display = 'none';
+    return;
+  }
+  if (desde > hasta) {
+    $('lista-compras').innerHTML = '<div class="empty" style="padding:32px 0">Fecha desde no puede ser posterior a fecha hasta</div>';
+    if ($('co-count')) $('co-count').textContent = '';
+    if ($('co-total')) $('co-total').style.display = 'none';
+    return;
+  }
   $('lista-compras').innerHTML = '<div class="cargando">Cargando...</div>';
   try {
-    const snap = await getDocs(query(collection(db,'compras'), orderBy('fecha','desc'), limit(30)));
-    if (snap.empty) { $('lista-compras').innerHTML = '<div class="empty">Sin compras registradas</div>'; return; }
-    $('lista-compras').innerHTML = snap.docs.map(d => {
-      const c = d.data();
-      return `
-        <div class="lista-item">
-          <div class="item-main">
-            <div class="item-nombre">${c.observacion || '—'}</div>
-            <div class="item-sub">${fmtFecha(c.fecha)}${c.proveedor ? ' · ' + c.proveedor : ''}</div>
-          </div>
-          <div class="item-right">
-            <div class="item-monto" style="color:var(--compras)">${fmtGs(c.monto)}</div>
-          </div>
-        </div>`;
-    }).join('');
-  } catch(e) { $('lista-compras').innerHTML = `<div class="empty">Error: ${e.message}</div>`; }
+    const snap = await getDocs(query(
+      collection(db,'compras'),
+      where('fecha', '>=', toTs(desde)),
+      where('fecha', '<=', toTs(hasta)),
+      orderBy('fecha','desc'), limit(500)
+    ));
+    comprasCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    filtrarCompras();
+  } catch(e) {
+    $('lista-compras').innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+    if ($('co-count')) $('co-count').textContent = '';
+  }
 }
+
+window.filtrarCompras = function() {
+  const desde = $('co-fecha-desde')?.value || '';
+  const hasta = $('co-fecha-hasta')?.value || '';
+  if (!desde || !hasta) {
+    $('lista-compras').innerHTML = '<div class="empty" style="padding:32px 0">Seleccioná un rango de fechas para ver compras</div>';
+    if ($('co-count')) $('co-count').textContent = '';
+    if ($('co-total')) $('co-total').style.display = 'none';
+    return;
+  }
+  const q     = ($('co-buscar')?.value || '').toLowerCase().trim();
+  const orden = $('co-fil-orden')?.value || 'fecha-desc';
+
+  let lista = comprasCache.filter(c => !q ||
+    (c.observacion||'').toLowerCase().includes(q) ||
+    (c.proveedor||'').toLowerCase().includes(q) ||
+    (c.tipoArticulo||'').toLowerCase().includes(q)
+  );
+  lista.sort((a, b) => {
+    if (orden === 'fecha-desc')  return (b.fecha?.seconds||0) - (a.fecha?.seconds||0);
+    if (orden === 'fecha-asc')   return (a.fecha?.seconds||0) - (b.fecha?.seconds||0);
+    if (orden === 'monto-mayor') return (b.monto||0) - (a.monto||0);
+    if (orden === 'monto-menor') return (a.monto||0) - (b.monto||0);
+    return 0;
+  });
+
+  const cnt = $('co-count');
+  if (cnt) cnt.textContent = `${lista.length} compra${lista.length !== 1 ? 's' : ''}`;
+
+  const totalDiv = $('co-total');
+  if (totalDiv) {
+    const total = lista.reduce((s, c) => s + (c.monto || 0), 0);
+    if (total > 0) {
+      totalDiv.textContent = `Total del período: ${fmtGs(total)}`;
+      totalDiv.style.display = 'block';
+    } else {
+      totalDiv.style.display = 'none';
+    }
+  }
+
+  renderTablaCompras(lista);
+};
+
+function renderTablaCompras(lista) {
+  const el = $('lista-compras');
+  if (!lista.length) { el.innerHTML = '<div class="empty">Sin resultados</div>'; return; }
+  el.innerHTML = `
+    <table class="cl-tabla">
+      <thead><tr>
+        <th>Detalle</th><th>Fecha</th>
+        <th style="text-align:right">Monto</th><th>Proveedor</th><th></th>
+      </tr></thead>
+      <tbody>${lista.map(c => `
+        <tr>
+          <td>
+            <div class="td-nombre" title="${c.observacion}">${c.observacion || '—'}</div>
+            <div class="td-id">${c.tipoArticulo ? c.tipoArticulo.charAt(0).toUpperCase() + c.tipoArticulo.slice(1) : ''}</div>
+          </td>
+          <td class="td-id" style="white-space:nowrap">${fmtFecha(c.fecha)}</td>
+          <td class="td-saldo" style="color:var(--compras)">${fmtGs(c.monto)}</td>
+          <td class="td-id">${c.proveedor || '—'}</td>
+          <td class="td-acc"><button class="btn-editar" data-coid="${c.id}">Editar</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+window.abrirModalNuevaCompra = function() {
+  compraModo = 'nuevo'; compraEditId = null; compraEditData = null;
+  $('mc-titulo').textContent = 'Nueva compra';
+  $('co-tipo').value = 'moneda';
+  $('co-fecha').value = hoy(); $('co-monto').value = '';
+  $('co-obs').value = ''; $('co-prov').value = '';
+  $('btn-co').textContent = 'Guardar';
+  $('modal-compra-overlay').classList.remove('hidden');
+};
+
+window.abrirModalEditarCompra = function(id) {
+  const c = comprasCache.find(x => x.id === id);
+  if (!c) return;
+  compraModo = 'editar'; compraEditId = id; compraEditData = c;
+  $('mc-titulo').textContent = 'Editar compra';
+  $('co-tipo').value  = c.tipoArticulo || 'moneda';
+  $('co-fecha').value = c.fecha?.toDate ? c.fecha.toDate().toISOString().split('T')[0] : hoy();
+  $('co-monto').value = c.monto || 0;
+  $('co-obs').value   = c.observacion || '';
+  $('co-prov').value  = c.proveedor || '';
+  $('btn-co').textContent = 'Actualizar';
+  $('modal-compra-overlay').classList.remove('hidden');
+};
+
+window.cerrarModalCompra = () => $('modal-compra-overlay').classList.add('hidden');
 
 window.guardarCompra = async () => {
   const fecha = $('co-fecha').value;
@@ -1895,40 +2202,147 @@ window.guardarCompra = async () => {
   if (!obs)   { toast('La observación es obligatoria', 'err'); return; }
   disBtn('btn-co', 'Guardando...');
   try {
-    await addDoc(collection(db,'compras'), {
+    const data = {
+      tipoArticulo: $('co-tipo').value,
       fecha: toTs(fecha), monto, observacion: obs, proveedor: $('co-prov').value.trim()
-    });
-    $('co-monto').value = ''; $('co-obs').value = '';
-    $('co-prov').value  = ''; $('co-fecha').value = hoy();
-    toast('Compra guardada ✓');
+    };
+    if (compraModo === 'nuevo') {
+      await addDoc(collection(db,'compras'), data);
+      toast('Compra guardada ✓');
+    } else {
+      await updateDoc(doc(db,'compras', compraEditId), data);
+      toast('Compra actualizada ✓');
+    }
+    cerrarModalCompra();
     await cargarCompras();
   } catch(e) { toast('Error: ' + e.message, 'err'); }
-  enBtn('btn-co', 'Guardar compra');
+  enBtn('btn-co', compraModo === 'nuevo' ? 'Guardar' : 'Actualizar');
 };
 
 /* ══════════════════════════
    EGRESOS
 ══════════════════════════ */
+let egresosCache = [];
+let egresoModo = 'nuevo';
+let egresoEditId = null;
+let egresoEditData = null;
+
 async function cargarEgresos() {
+  const desde = $('e-fecha-desde')?.value || '';
+  const hasta = $('e-fecha-hasta')?.value || '';
+  if (!desde || !hasta) {
+    $('lista-egresos').innerHTML = '<div class="empty" style="padding:32px 0">Seleccioná un rango de fechas para ver egresos</div>';
+    if ($('e-count')) $('e-count').textContent = '';
+    if ($('e-total')) $('e-total').style.display = 'none';
+    return;
+  }
+  if (desde > hasta) {
+    $('lista-egresos').innerHTML = '<div class="empty" style="padding:32px 0">Fecha desde no puede ser posterior a fecha hasta</div>';
+    if ($('e-count')) $('e-count').textContent = '';
+    if ($('e-total')) $('e-total').style.display = 'none';
+    return;
+  }
   $('lista-egresos').innerHTML = '<div class="cargando">Cargando...</div>';
   try {
-    const snap = await getDocs(query(collection(db,'egresos'), orderBy('fecha','desc'), limit(30)));
-    if (snap.empty) { $('lista-egresos').innerHTML = '<div class="empty">Sin egresos registrados</div>'; return; }
-    $('lista-egresos').innerHTML = snap.docs.map(d => {
-      const e = d.data();
-      return `
-        <div class="lista-item">
-          <div class="item-main">
-            <div class="item-nombre">${e.descripcion || '—'}</div>
-            <div class="item-sub">${fmtFecha(e.fecha)}${e.categoria ? ' · ' + e.categoria : ''}</div>
-          </div>
-          <div class="item-right">
-            <div class="item-monto" style="color:var(--egresos)">${fmtGs(e.monto)}</div>
-          </div>
-        </div>`;
-    }).join('');
-  } catch(e) { $('lista-egresos').innerHTML = `<div class="empty">Error: ${e.message}</div>`; }
+    const snap = await getDocs(query(
+      collection(db,'egresos'),
+      where('fecha', '>=', toTs(desde)),
+      where('fecha', '<=', toTs(hasta)),
+      orderBy('fecha','desc'), limit(500)
+    ));
+    egresosCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    filtrarEgresos();
+  } catch(e) {
+    $('lista-egresos').innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+    if ($('e-count')) $('e-count').textContent = '';
+  }
 }
+
+window.filtrarEgresos = function() {
+  const desde = $('e-fecha-desde')?.value || '';
+  const hasta = $('e-fecha-hasta')?.value || '';
+  if (!desde || !hasta) {
+    $('lista-egresos').innerHTML = '<div class="empty" style="padding:32px 0">Seleccioná un rango de fechas para ver egresos</div>';
+    if ($('e-count')) $('e-count').textContent = '';
+    if ($('e-total')) $('e-total').style.display = 'none';
+    return;
+  }
+  const q     = ($('e-buscar')?.value || '').toLowerCase().trim();
+  const orden = $('e-fil-orden')?.value || 'fecha-desc';
+
+  let lista = egresosCache.filter(e => !q ||
+    (e.descripcion||'').toLowerCase().includes(q) ||
+    (e.categoria||'').toLowerCase().includes(q)
+  );
+  lista.sort((a, b) => {
+    if (orden === 'fecha-desc')  return (b.fecha?.seconds||0) - (a.fecha?.seconds||0);
+    if (orden === 'fecha-asc')   return (a.fecha?.seconds||0) - (b.fecha?.seconds||0);
+    if (orden === 'monto-mayor') return (b.monto||0) - (a.monto||0);
+    if (orden === 'monto-menor') return (a.monto||0) - (b.monto||0);
+    return 0;
+  });
+
+  const cnt = $('e-count');
+  if (cnt) cnt.textContent = `${lista.length} egreso${lista.length !== 1 ? 's' : ''}`;
+
+  const totalDiv = $('e-total');
+  if (totalDiv) {
+    const total = lista.reduce((s, e) => s + (e.monto || 0), 0);
+    if (total > 0) {
+      totalDiv.textContent = `Total del período: ${fmtGs(total)}`;
+      totalDiv.style.display = 'block';
+    } else {
+      totalDiv.style.display = 'none';
+    }
+  }
+
+  renderTablaEgresos(lista);
+};
+
+function renderTablaEgresos(lista) {
+  const el = $('lista-egresos');
+  if (!lista.length) { el.innerHTML = '<div class="empty">Sin resultados</div>'; return; }
+  el.innerHTML = `
+    <table class="cl-tabla">
+      <thead><tr>
+        <th>Descripción</th><th>Fecha</th>
+        <th style="text-align:right">Monto</th><th>Categoría</th><th></th>
+      </tr></thead>
+      <tbody>${lista.map(e => `
+        <tr>
+          <td class="td-nombre" title="${e.descripcion}">${e.descripcion || '—'}</td>
+          <td class="td-id" style="white-space:nowrap">${fmtFecha(e.fecha)}</td>
+          <td class="td-saldo" style="color:var(--egresos)">${fmtGs(e.monto)}</td>
+          <td class="td-id">${e.categoria || '—'}</td>
+          <td class="td-acc"><button class="btn-editar" data-eid="${e.id}">Editar</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+window.abrirModalNuevoEgreso = function() {
+  egresoModo = 'nuevo'; egresoEditId = null; egresoEditData = null;
+  $('me-titulo').textContent = 'Nuevo egreso';
+  $('e-fecha').value = hoy(); $('e-monto').value = '';
+  $('e-desc').value = ''; $('e-cat').value = '';
+  $('btn-e').textContent = 'Guardar';
+  $('modal-egreso-overlay').classList.remove('hidden');
+};
+
+window.abrirModalEditarEgreso = function(id) {
+  const e = egresosCache.find(x => x.id === id);
+  if (!e) return;
+  egresoModo = 'editar'; egresoEditId = id; egresoEditData = e;
+  $('me-titulo').textContent = 'Editar egreso';
+  $('e-fecha').value = e.fecha?.toDate ? e.fecha.toDate().toISOString().split('T')[0] : hoy();
+  $('e-monto').value = e.monto || 0;
+  $('e-desc').value  = e.descripcion || '';
+  $('e-cat').value   = e.categoria || '';
+  $('btn-e').textContent = 'Actualizar';
+  $('modal-egreso-overlay').classList.remove('hidden');
+};
+
+window.cerrarModalEgreso = () => $('modal-egreso-overlay').classList.add('hidden');
 
 window.guardarEgreso = async () => {
   const fecha = $('e-fecha').value;
@@ -1939,15 +2353,410 @@ window.guardarEgreso = async () => {
   if (!desc)  { toast('La descripción es obligatoria', 'err'); return; }
   disBtn('btn-e', 'Guardando...');
   try {
-    await addDoc(collection(db,'egresos'), {
-      fecha: toTs(fecha), monto, descripcion: desc, categoria: $('e-cat').value.trim()
-    });
-    $('e-monto').value = ''; $('e-desc').value = '';
-    $('e-cat').value   = ''; $('e-fecha').value = hoy();
-    toast('Egreso guardado ✓');
+    const data = { fecha: toTs(fecha), monto, descripcion: desc, categoria: $('e-cat').value.trim() };
+    if (egresoModo === 'nuevo') {
+      await addDoc(collection(db,'egresos'), data);
+      toast('Egreso guardado ✓');
+    } else {
+      await updateDoc(doc(db,'egresos', egresoEditId), data);
+      toast('Egreso actualizado ✓');
+    }
+    cerrarModalEgreso();
     await cargarEgresos();
   } catch(e) { toast('Error: ' + e.message, 'err'); }
-  enBtn('btn-e', 'Guardar egreso');
+  enBtn('btn-e', egresoModo === 'nuevo' ? 'Guardar' : 'Actualizar');
+};
+
+/* ══════════════════════════
+   EXPOS / FERIAS
+══════════════════════════ */
+let exposCache = [];
+let exposVentasCache = [];
+let expoModo = 'nuevo';
+let expoEditId = null;
+let expoVentaModo = 'nuevo';
+let expoVentaEditId = null;
+let expoVentaEditData = null;
+
+async function cargarExpos() {
+  $('lista-expos').innerHTML = '<div class="cargando">Cargando...</div>';
+  try {
+    const snap = await getDocs(collection(db,'expos'));
+    exposCache = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.fechaInicio?.seconds ?? 0) - (a.fechaInicio?.seconds ?? 0));
+    refreshSelectExpos();
+    filtrarExpos();
+  } catch(e) {
+    $('lista-expos').innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  }
+}
+
+function refreshSelectExpos() {
+  const sel = $('ex-fil-expo');
+  const prevVal = sel.value;
+  sel.innerHTML = '<option value="">— Todos los eventos —</option>' +
+    exposCache.map(ex => `<option value="${ex.id}">${ex.nombre}</option>`).join('');
+  if (prevVal) sel.value = prevVal;
+
+  const msel = $('mexv-expo');
+  if (msel) {
+    const mprev = msel.value;
+    msel.innerHTML = '<option value="">Seleccionar evento...</option>' +
+      exposCache.map(ex => `<option value="${ex.id}" data-nombre="${ex.nombre}">${ex.nombre}</option>`).join('');
+    if (mprev) msel.value = mprev;
+  }
+}
+
+window.filtrarExpos = async function() {
+  const expoId = $('ex-fil-expo')?.value || '';
+  const btnVenta = $('btn-nueva-expo-venta');
+  const btnFinalizar = $('btn-finalizar-expo');
+  const resumenDiv = $('ex-resumen-expo');
+
+  if (expoId) {
+    const expo = exposCache.find(ex => ex.id === expoId);
+    if (btnVenta) btnVenta.style.display = '';
+    if (btnFinalizar) btnFinalizar.style.display = expo?.finalizado ? 'none' : '';
+    if (resumenDiv && expo) {
+      const costo = expo.costo || 0;
+      const ventas = expo.totalVentas || 0;
+      const resultado = ventas - costo;
+      let html = `<strong>${expo.nombre}</strong>`;
+      if (costo > 0) html += ` · Costo: ${fmtGs(costo)}`;
+      html += ` · Vendido: <span style="color:var(--expos)">${fmtGs(ventas)}</span>`;
+      if (costo > 0) html += ` · Resultado: <span style="color:${resultado >= 0 ? '#5dde8a' : '#e07070'};font-weight:700">${fmtGs(resultado)}</span>`;
+      if (expo.finalizado) html += ' · <span class="badge badge-pagado">Finalizado</span>';
+      resumenDiv.innerHTML = html;
+      resumenDiv.style.display = 'block';
+    }
+    await cargarExpoVentas(expoId);
+  } else {
+    if (btnVenta) btnVenta.style.display = 'none';
+    if (btnFinalizar) btnFinalizar.style.display = 'none';
+    if (resumenDiv) resumenDiv.style.display = 'none';
+    renderListaExpos();
+  }
+};
+
+function renderListaExpos() {
+  const el = $('lista-expos');
+  const cnt = $('ex-count');
+  const totalDiv = $('ex-total');
+
+  if (cnt) cnt.textContent = `${exposCache.length} evento${exposCache.length !== 1 ? 's' : ''}`;
+  if (totalDiv) totalDiv.style.display = 'none';
+
+  if (!exposCache.length) {
+    el.innerHTML = '<div class="empty">Sin eventos registrados</div>';
+    return;
+  }
+
+  el.innerHTML = `
+    <table class="cl-tabla">
+      <thead><tr>
+        <th>Evento</th><th>Fechas</th>
+        <th style="text-align:right">Vendido</th><th style="text-align:right">Costo</th><th></th>
+      </tr></thead>
+      <tbody>${exposCache.map(ex => `
+        <tr>
+          <td>
+            <div class="td-nombre" title="${ex.nombre}">${ex.nombre}${ex.finalizado ? ' <span class="badge badge-pagado" style="font-size:9px">Finalizado</span>' : ''}</div>
+            <div class="td-id">${ex.ubicacion || ''}</div>
+          </td>
+          <td class="td-id" style="white-space:nowrap">${fmtFecha(ex.fechaInicio)}${ex.fechaFin ? ' — ' + fmtFecha(ex.fechaFin) : ''}</td>
+          <td class="td-saldo" style="color:var(--expos)">${fmtGs(ex.totalVentas || 0)}<div class="td-id">${ex.cantidadVentas || 0} venta${(ex.cantidadVentas || 0) !== 1 ? 's' : ''}</div></td>
+          <td class="td-saldo" style="color:var(--egresos)">${(ex.costo || 0) > 0 ? fmtGs(ex.costo) : '—'}</td>
+          <td class="td-acc">
+            <button class="btn-ver-ventas" data-expsel="${ex.id}">Ver ventas</button>
+            <button class="btn-editar" data-expid="${ex.id}">Editar</button>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+async function cargarExpoVentas(expoId) {
+  const el = $('lista-expos');
+  el.innerHTML = '<div class="cargando">Cargando ventas...</div>';
+  try {
+    const snap = await getDocs(query(
+      collection(db,'expos_ventas'),
+      where('expoId', '==', expoId)
+    ));
+    exposVentasCache = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.fecha?.seconds ?? 0) - (a.fecha?.seconds ?? 0));
+    renderExpoVentas(expoId);
+  } catch(e) {
+    el.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  }
+}
+
+function renderExpoVentas(expoId) {
+  const el = $('lista-expos');
+  const cnt = $('ex-count');
+  const totalDiv = $('ex-total');
+  const expo = exposCache.find(ex => ex.id === expoId);
+
+  if (cnt) cnt.textContent = `${exposVentasCache.length} venta${exposVentasCache.length !== 1 ? 's' : ''} en ${expo?.nombre || 'evento'}`;
+
+  const total = exposVentasCache.reduce((s, v) => s + (v.monto || 0), 0);
+  if (totalDiv) {
+    if (total > 0) {
+      totalDiv.textContent = `Total vendido: ${fmtGs(total)}`;
+      totalDiv.style.display = 'block';
+    } else {
+      totalDiv.style.display = 'none';
+    }
+  }
+
+  if (!exposVentasCache.length) {
+    el.innerHTML = '<div class="empty">Sin ventas en este evento</div>';
+    return;
+  }
+
+  el.innerHTML = `
+    <table class="cl-tabla">
+      <thead><tr>
+        <th>Detalle</th><th>Fecha</th>
+        <th style="text-align:right">Monto</th><th></th>
+      </tr></thead>
+      <tbody>${exposVentasCache.map(v => `
+        <tr>
+          <td>
+            <div class="td-nombre" title="${v.descripcion || ''}">${v.descripcion || '—'}</div>
+            <div class="td-id">${v.tipoArticulo ? v.tipoArticulo.charAt(0).toUpperCase() + v.tipoArticulo.slice(1) : ''}</div>
+          </td>
+          <td class="td-id" style="white-space:nowrap">${fmtFecha(v.fecha)}</td>
+          <td class="td-saldo" style="color:var(--expos)">${fmtGs(v.monto)}</td>
+          <td class="td-acc">
+            <button class="btn-editar" data-exvid="${v.id}">Editar</button>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+/* ---- Modal Expo (Evento) ---- */
+window.abrirModalNuevoEvento = function() {
+  expoModo = 'nuevo'; expoEditId = null;
+  $('mex-titulo').textContent = 'Nuevo evento';
+  $('mex-nombre').value = '';
+  $('mex-fecha-inicio').value = hoy();
+  $('mex-fecha-fin').value = hoy();
+  $('mex-ubicacion').value = '';
+  $('mex-costo').value = '';
+  $('mex-comentario').value = '';
+  $('btn-mex-guardar').textContent = 'Guardar';
+  $('modal-expo-overlay').classList.remove('hidden');
+  setTimeout(() => $('mex-nombre').focus(), 100);
+};
+
+window.abrirModalEditarEvento = function(id) {
+  const ex = exposCache.find(x => x.id === id);
+  if (!ex) return;
+  expoModo = 'editar'; expoEditId = id;
+  $('mex-titulo').textContent = 'Editar evento';
+  $('mex-nombre').value = ex.nombre || '';
+  $('mex-fecha-inicio').value = ex.fechaInicio?.toDate ? ex.fechaInicio.toDate().toISOString().split('T')[0] : hoy();
+  $('mex-fecha-fin').value = ex.fechaFin?.toDate ? ex.fechaFin.toDate().toISOString().split('T')[0] : hoy();
+  $('mex-ubicacion').value = ex.ubicacion || '';
+  $('mex-costo').value = (ex.costo || 0) > 0 ? Math.round(ex.costo).toLocaleString('es-PY', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '';
+  $('mex-comentario').value = ex.comentario || '';
+  $('btn-mex-guardar').textContent = 'Actualizar';
+  $('modal-expo-overlay').classList.remove('hidden');
+  setTimeout(() => $('mex-nombre').focus(), 100);
+};
+
+window.cerrarModalExpo = () => $('modal-expo-overlay').classList.add('hidden');
+
+window.guardarModalExpo = async function() {
+  const nombre = $('mex-nombre').value.trim();
+  const fechaInicio = $('mex-fecha-inicio').value;
+  const fechaFin = $('mex-fecha-fin').value;
+
+  if (!nombre) { toast('El nombre es obligatorio', 'err'); return; }
+  if (!fechaInicio) { toast('La fecha de inicio es obligatoria', 'err'); return; }
+  if (!fechaFin) { toast('La fecha de fin es obligatoria', 'err'); return; }
+  if (fechaInicio > fechaFin) { toast('La fecha inicio no puede ser posterior a la de fin', 'err'); return; }
+
+  const btn = $('btn-mex-guardar');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    const costoRaw = ($('mex-costo').value || '0').replace(/\./g, '');
+    const data = {
+      nombre,
+      fechaInicio: toTs(fechaInicio),
+      fechaFin: toTs(fechaFin),
+      ubicacion: $('mex-ubicacion').value.trim(),
+      costo: parseInt(costoRaw, 10) || 0,
+      comentario: $('mex-comentario').value.trim()
+    };
+    if (expoModo === 'nuevo') {
+      data.totalVentas = 0;
+      data.cantidadVentas = 0;
+      data.finalizado = false;
+      await addDoc(collection(db,'expos'), data);
+      toast('Evento creado ✓');
+    } else {
+      await updateDoc(doc(db,'expos', expoEditId), data);
+      toast('Evento actualizado ✓');
+    }
+    cerrarModalExpo();
+    await cargarExpos();
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+  btn.disabled = false;
+  btn.textContent = expoModo === 'nuevo' ? 'Guardar' : 'Actualizar';
+};
+
+/* ---- Finalizar Expo ---- */
+window.finalizarExpo = async function() {
+  const expoId = $('ex-fil-expo')?.value || '';
+  if (!expoId) { toast('Seleccioná un evento', 'err'); return; }
+  const expo = exposCache.find(ex => ex.id === expoId);
+  if (!expo) return;
+  if (expo.finalizado) { toast('Este evento ya fue finalizado', 'err'); return; }
+
+  const costo = expo.costo || 0;
+  const totalVentas = expo.totalVentas || 0;
+  const resultado = totalVentas - costo;
+
+  let msg = `¿Finalizar "${expo.nombre}"?\n\n`;
+  msg += `Ventas totales: ${fmtGs(totalVentas)}\n`;
+  if (costo > 0) msg += `Costo participación: ${fmtGs(costo)}\n`;
+  msg += `Resultado: ${fmtGs(resultado)}\n\n`;
+  msg += 'Esto generará:\n';
+  if (costo > 0) msg += `• Un egreso por ${fmtGs(costo)}\n`;
+  if (totalVentas > 0) msg += `• Un pago (ingreso) por ${fmtGs(totalVentas)}\n`;
+
+  if (!confirm(msg)) return;
+
+  const btnFin = $('btn-finalizar-expo');
+  if (btnFin) { btnFin.disabled = true; btnFin.textContent = 'Finalizando...'; }
+
+  try {
+    const fechaHoy = toTs(hoy());
+
+    if (costo > 0) {
+      await addDoc(collection(db,'egresos'), {
+        fecha: fechaHoy,
+        monto: costo,
+        descripcion: `Costo participación: ${expo.nombre}`,
+        categoria: 'Expo / Feria'
+      });
+    }
+
+    if (totalVentas > 0) {
+      await addDoc(collection(db,'pagos'), {
+        clienteId: '', clienteNombre: `Expo: ${expo.nombre}`,
+        monto: totalVentas,
+        fecha: fechaHoy,
+        observacion: `Ventas al contado en ${expo.nombre} (${expo.cantidadVentas || 0} ventas)`
+      });
+    }
+
+    await updateDoc(doc(db,'expos', expoId), { finalizado: true });
+
+    toast('Evento finalizado ✓');
+    await cargarExpos();
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+  if (btnFin) { btnFin.disabled = false; btnFin.textContent = 'Finalizar'; }
+};
+
+/* ---- Modal Expo Venta ---- */
+window.abrirModalNuevaExpoVenta = function() {
+  expoVentaModo = 'nuevo'; expoVentaEditId = null; expoVentaEditData = null;
+  $('mexv-titulo').textContent = 'Nueva venta en expo';
+  refreshSelectExpos();
+  $('mexv-expo').value = $('ex-fil-expo')?.value || '';
+  $('mexv-tipo').value = 'moneda';
+  $('mexv-desc').value = '';
+  $('mexv-fecha').value = hoy();
+  $('mexv-monto').value = '';
+  $('btn-mexv-guardar').textContent = 'Guardar';
+  $('modal-exv-overlay').classList.remove('hidden');
+  setTimeout(() => $('mexv-desc').focus(), 100);
+};
+
+window.abrirModalEditarExpoVenta = function(id) {
+  const v = exposVentasCache.find(x => x.id === id);
+  if (!v) return;
+  expoVentaModo = 'editar'; expoVentaEditId = id; expoVentaEditData = v;
+  $('mexv-titulo').textContent = 'Editar venta';
+  refreshSelectExpos();
+  $('mexv-expo').value = v.expoId || '';
+  $('mexv-tipo').value = v.tipoArticulo || 'moneda';
+  $('mexv-desc').value = v.descripcion || '';
+  $('mexv-fecha').value = v.fecha?.toDate ? v.fecha.toDate().toISOString().split('T')[0] : hoy();
+  $('mexv-monto').value = Math.round(v.monto || 0).toLocaleString('es-PY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  $('btn-mexv-guardar').textContent = 'Actualizar';
+  $('modal-exv-overlay').classList.remove('hidden');
+};
+
+window.cerrarModalExpoVenta = () => $('modal-exv-overlay').classList.add('hidden');
+
+window.guardarModalExpoVenta = async function() {
+  const sel = $('mexv-expo');
+  const expoId = sel.value;
+  const expoNombre = sel.options[sel.selectedIndex]?.dataset?.nombre || '';
+  const fecha = $('mexv-fecha').value;
+  const monto = parseInt(($('mexv-monto').value || '0').replace(/\./g, ''), 10);
+
+  if (!expoId) { toast('Seleccioná un evento', 'err'); return; }
+  if (!fecha) { toast('La fecha es obligatoria', 'err'); return; }
+  if (!monto || monto <= 0) { toast('El monto debe ser mayor a 0', 'err'); return; }
+
+  const btn = $('btn-mexv-guardar');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    if (expoVentaModo === 'nuevo') {
+      await addDoc(collection(db,'expos_ventas'), {
+        expoId, expoNombre,
+        tipoArticulo: $('mexv-tipo').value,
+        descripcion: $('mexv-desc').value.trim(),
+        fecha: toTs(fecha), monto
+      });
+      await updateDoc(doc(db,'expos', expoId), {
+        totalVentas: increment(monto),
+        cantidadVentas: increment(1)
+      });
+      toast('Venta registrada ✓');
+    } else {
+      const oldMonto = expoVentaEditData.monto || 0;
+      const oldExpoId = expoVentaEditData.expoId;
+
+      await updateDoc(doc(db,'expos_ventas', expoVentaEditId), {
+        expoId, expoNombre,
+        tipoArticulo: $('mexv-tipo').value,
+        descripcion: $('mexv-desc').value.trim(),
+        fecha: toTs(fecha), monto
+      });
+
+      if (expoId !== oldExpoId) {
+        if (oldExpoId) {
+          await updateDoc(doc(db,'expos', oldExpoId), {
+            totalVentas: increment(-oldMonto),
+            cantidadVentas: increment(-1)
+          });
+        }
+        await updateDoc(doc(db,'expos', expoId), {
+          totalVentas: increment(monto),
+          cantidadVentas: increment(1)
+        });
+      } else {
+        const delta = monto - oldMonto;
+        if (delta !== 0) {
+          await updateDoc(doc(db,'expos', expoId), { totalVentas: increment(delta) });
+        }
+      }
+      toast('Venta actualizada ✓');
+    }
+    cerrarModalExpoVenta();
+    await cargarExpos();
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+  btn.disabled = false;
+  btn.textContent = expoVentaModo === 'nuevo' ? 'Guardar' : 'Actualizar';
 };
 
 /* ══════════════════════════
@@ -2022,6 +2831,21 @@ async function cargarDashboard() {
     $('kpi-egresos').textContent  = fmtGs(sumE);
     $('kpi-egresos-cnt').textContent = `${E.length} egreso${E.length!==1?'s':''}`;
 
+    const resultado = sumP - sumC - sumE;
+    $('kpi-resultado').textContent = fmtGs(resultado);
+    $('kpi-resultado').style.color = resultado >= 0 ? '#5dde8a' : '#e07070';
+    $('kpi-resultado-det').textContent = `Cobrado − Compras − Egresos`;
+
+    const ventasPend = V.filter(v => v.estado === 'pendiente');
+    const sumPend = ventasPend.reduce((s, v) => s + (v.monto || 0), 0);
+    $('kpi-pendiente').textContent = fmtGs(sumPend);
+    $('kpi-pendiente-cnt').textContent = `${ventasPend.length} venta${ventasPend.length !== 1 ? 's' : ''}`;
+
+    const allVPend = allV.filter(v => v.estado === 'pendiente');
+    const sumPendTotal = allVPend.reduce((s, v) => s + (v.monto || 0), 0);
+    $('kpi-pendiente-total').textContent = fmtGs(sumPendTotal);
+    $('kpi-pendiente-total-cnt').textContent = `${allVPend.length} venta${allVPend.length !== 1 ? 's' : ''}`;
+
     /* Chart */
     const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
     const labels = [], ventasMes = [], pagosMes = [];
@@ -2057,6 +2881,7 @@ async function cargarDashboard() {
 
     $('dash-loading').style.display = 'none';
     $('dash-content').style.display = 'block';
+
   } catch(e) {
     $('dash-loading').textContent = 'Error: ' + e.message;
   }
@@ -2134,13 +2959,23 @@ $('mv-fecha').value = hoy();
 $('mp-fecha').value = hoy();
 $('co-fecha').value = hoy();
 $('e-fecha').value  = hoy();
+$('mexv-fecha').value = hoy();
+
+const ahora = new Date();
+const primerDiaMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString().split('T')[0];
+$('p-fecha-desde').value = primerDiaMes;
+$('p-fecha-hasta').value = hoy();
+$('co-fecha-desde').value = primerDiaMes;
+$('co-fecha-hasta').value = hoy();
+$('e-fecha-desde').value = primerDiaMes;
+$('e-fecha-hasta').value = hoy();
 
 /* La carga inicial se dispara desde hacerLogin() luego de autenticar */
 
 /* Cerrar modales con Escape */
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    cerrarModal(); cerrarModalVenta(); cerrarModalPago(); window.cerrarModalInv?.();
+    cerrarModal(); cerrarModalVenta(); cerrarModalPago(); window.cerrarModalCompra?.(); window.cerrarModalEgreso?.(); window.cerrarModalExpo?.(); window.cerrarModalExpoVenta?.(); window.cerrarModalInv?.();
   }
 });
 
@@ -2299,7 +3134,12 @@ document.addEventListener('pointerdown', e => {
       if (btn.dataset.id)     abrirModalEditar(btn.dataset.id);
       if (btn.dataset.vid)    abrirModalEditarVenta(btn.dataset.vid);
       if (btn.dataset.pid)    abrirModalEditarPago(btn.dataset.pid);
+      if (btn.dataset.coid)   abrirModalEditarCompra(btn.dataset.coid);
+      if (btn.dataset.eid)    abrirModalEditarEgreso(btn.dataset.eid);
       if (btn.dataset.cid)    abrirVentasCliente(btn.dataset.cid, btn.dataset.cnombre || '', btn.dataset.ctel || '');
+      if (btn.dataset.expid)  abrirModalEditarEvento(btn.dataset.expid);
+      if (btn.dataset.exvid)  abrirModalEditarExpoVenta(btn.dataset.exvid);
+      if (btn.dataset.expsel) { $('ex-fil-expo').value = btn.dataset.expsel; filtrarExpos(); }
       if (btn.dataset.invid)  abrirModalEditarInv(btn.dataset.invid);
     }
   };

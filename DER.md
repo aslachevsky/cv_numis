@@ -1,6 +1,6 @@
 # DER - Diagrama Entidad-Relación
 
-Última actualización: 2026-06-19
+Última actualización: 2026-06-29
 
 ```
 ┌─────────────────────────┐
@@ -18,10 +18,13 @@
 │ PK  id (auto)                │◄────────┤ PK  id (auto)                       │
 │     nombre         (string)  │         │ FK  clienteId        (string)       │
 │     identificacion (string)  │         │     clienteNombre    (string) [den] │
-│     telefono       (string)  │         │     descripcion      (string)       │
-│     email          (string)  │         │     fecha            (Timestamp)    │
-│     direccion      (string)  │         │     monto            (number) [Gs]  │
-│     saldoPendiente (number)  │         │     estado           (enum)         │
+│     telefono       (string)  │         │     tipoArticulo     (enum)        │
+│     email          (string)  │         │       moneda|billete|medalla|      │
+│     direccion      (string)  │         │       token|otro                   │
+│     saldoPendiente (number)  │         │     descripcion      (string)       │
+│                              │         │     fecha            (Timestamp)    │
+│                              │         │     monto            (number) [Gs]  │
+│                              │         │     estado           (enum)         │
 │                              │         │       pendiente|pagado|             │
 │                              │         │       enviado|anulado              │
 │                              │         └──────────────────────────────────────┘
@@ -68,6 +71,22 @@
 │     fechaVenta         (Timestamp)   │
 │     comentario         (string)      │
 └──────────────────────────────────────┘
+
+
+┌──────────────────────────────────────┐         ┌──────────────────────────────────────┐
+│             expos                    │         │          expos_ventas                │
+├──────────────────────────────────────┤    1:N  ├──────────────────────────────────────┤
+│ PK  id (auto)                        │◄────────┤ PK  id (auto)                       │
+│     nombre           (string)        │         │ FK  expoId           (string)       │
+│     fechaInicio      (Timestamp)     │         │     expoNombre       (string) [den] │
+│     fechaFin         (Timestamp)     │         │     tipoArticulo     (enum)         │
+│     ubicacion        (string)        │         │       moneda|billete|medalla|       │
+│     costo            (number) [Gs]   │         │       token|otro                    │
+│     comentario       (string)        │         │     descripcion      (string)       │
+│     totalVentas      (number) [Gs]   │         │     fecha            (Timestamp)    │
+│     cantidadVentas   (number)        │         │     monto            (number) [Gs]  │
+│     finalizado       (boolean)       │         │                                      │
+└──────────────────────────────────────┘         └──────────────────────────────────────┘
 ```
 
 ## Relaciones
@@ -79,6 +98,7 @@
 | **compras** | independiente | Sin relación a otras entidades |
 | **egresos** | independiente | Sin relación a otras entidades |
 | **inventario** | independiente | Sin relación a otras entidades |
+| **expos → expos_ventas** | 1:N | Un evento tiene muchas ventas (`expoId`) |
 | **admins** | independiente | Solo autenticación |
 
 ## Notas
@@ -87,3 +107,6 @@
 - **[Gs]** = montos en Guaraníes / **[US]** = montos en USD
 - `clientes.saldoPendiente` es un campo calculado que se actualiza con `increment()` al crear ventas o pagos
 - **compras**, **egresos** e **inventario** son entidades independientes sin FK a ninguna otra colección
+- **expos_ventas** son ventas al contado sin cliente asociado; `totalVentas` y `cantidadVentas` en `expos` se actualizan con `increment()` al crear/editar ventas
+- **[imp]** `origen` es un campo opcional presente solo en registros creados por la importación histórica (`"importacion"`). Permite filtrar/identificar datos importados del spreadsheet 2020–2026
+- El cliente **"Histórico (pre-sistema)"** agrupa los cobros diarios importados sin detalle de cliente. Su `saldoPendiente` es siempre 0
