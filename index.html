@@ -1605,6 +1605,7 @@ let ventasCache = [];
 let ventaModo = 'nuevo';
 let ventaEditId = null;
 let ventaEditData = null;
+let ultimoTipoVenta = 'moneda';
 
 async function cargarVentas() {
   $('lista-ventas').innerHTML = '<div class="cargando">Cargando...</div>';
@@ -1721,7 +1722,7 @@ window.abrirModalNuevaVenta = function() {
   syncSelectClientes('mv-cliente');
   $('mv-cliente').value = $('v-fil-cliente')?.value || '';
   mostrarSaldoCliente();
-  $('mv-tipo').value = 'moneda';
+  $('mv-tipo').value = ultimoTipoVenta;
   $('mv-desc').value = ''; $('mv-fecha').value = hoy();
   $('mv-monto').value = '0'; $('mv-estado').value = 'pendiente';
   $('mv-estado-grupo').style.display = 'none';
@@ -1759,6 +1760,7 @@ window.guardarModalVenta = async function() {
   const monto  = parseInt($('mv-monto').value.replace(/\./g, '') || '0', 10);
   const esNuevo = ventaModo === 'nuevo';
   const estado = esNuevo ? 'pendiente' : $('mv-estado').value;
+  const tipoArticulo = $('mv-tipo').value;
 
   if (!clienteId) { toast('Seleccioná un cliente', 'err'); return; }
   if (!fecha)     { toast('La fecha es obligatoria', 'err'); return; }
@@ -1767,10 +1769,11 @@ window.guardarModalVenta = async function() {
   const btn = $('btn-mv-guardar');
   btn.disabled = true; btn.textContent = 'Guardando...';
   try {
+    ultimoTipoVenta = tipoArticulo;
     if (esNuevo) {
       await addDoc(collection(db,'ventas'), {
         clienteId, clienteNombre,
-        tipoArticulo: $('mv-tipo').value,
+        tipoArticulo,
         descripcion: $('mv-desc').value.trim(),
         fecha: toTs(fecha), monto, estado: 'pendiente'
       });
@@ -1786,7 +1789,7 @@ window.guardarModalVenta = async function() {
 
       await updateDoc(doc(db,'ventas', ventaEditId), {
         clienteId, clienteNombre,
-        tipoArticulo: $('mv-tipo').value,
+        tipoArticulo,
         descripcion: $('mv-desc').value.trim(),
         fecha: toTs(fecha), monto, estado
       });
