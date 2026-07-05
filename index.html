@@ -225,7 +225,7 @@
       position: fixed; top: 70px; left: 50%;
       transform: translateX(-50%) translateY(-12px);
       padding: 9px 18px; border-radius: 8px;
-      font-size: 12px; z-index: 400;
+      font-size: 12px; z-index: 1000;
       opacity: 0; transition: all .22s;
       pointer-events: none; white-space: nowrap;
       border: 1px solid var(--border); font-family: 'Poppins', sans-serif;
@@ -1932,7 +1932,7 @@ window.filtrarPagos = function() {
 
   const totalDiv = $('p-total');
   if (totalDiv) {
-    const total = lista.reduce((s, p) => s + (p.monto || 0), 0);
+    const total = lista.filter(p => p.estado !== 'anulado').reduce((s, p) => s + (p.monto || 0), 0);
     if (total > 0) {
       totalDiv.textContent = `Total del período: ${fmtGs(total)}`;
       totalDiv.style.display = 'block';
@@ -1955,15 +1955,38 @@ function renderTablaPagos(lista) {
       </tr></thead>
       <tbody>${lista.map(p => `
         <tr>
-          <td class="td-nombre" title="${p.clienteNombre}">${p.clienteNombre}</td>
+          <td class="td-nombre" title="${p.clienteNombre}">${p.clienteNombre}${p.estado==='anulado' ? ' <span class="badge badge-anulado">anulado</span>' : ''}</td>
           <td class="td-id" style="white-space:nowrap">${fmtFecha(p.fecha)}</td>
-          <td class="td-saldo" style="color:var(--pagos)">${fmtGs(p.monto)}</td>
+          <td class="td-saldo" style="color:var(--pagos)${p.estado==='anulado'?';text-decoration:line-through;opacity:.5':''}">${fmtGs(p.monto)}</td>
           <td class="td-id">${p.observacion || '—'}</td>
-          <td class="td-acc"><button class="btn-editar" data-pid="${p.id}">Editar</button></td>
+          <td class="td-acc">
+            ${p.estado !== 'anulado' ? `<button class="btn-anular" data-anular-pago="${p.id}" onclick="anularPago('${p.id}')">Anular</button>` : ''}
+            <button class="btn-editar" data-pid="${p.id}">Editar</button>
+          </td>
         </tr>`).join('')}
       </tbody>
     </table>`;
 }
+
+window.anularPago = async function(id) {
+  const p = pagosCache.find(x => x.id === id);
+  if (!p || p.estado === 'anulado') return;
+  if (!confirm(`¿Anular el pago de ${fmtGs(p.monto)} de ${p.clienteNombre}? Se restituirá el saldo pendiente del cliente.`)) return;
+  const btn = document.querySelector(`[data-anular-pago="${id}"]`);
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  try {
+    await updateDoc(doc(db,'pagos', id), { estado: 'anulado' });
+    if (p.clienteId) {
+      await updateDoc(doc(db,'clientes', p.clienteId), { saldoPendiente: increment(p.monto || 0) });
+    }
+    toast('Pago anulado ✓');
+    await cargarPagos();
+    await cargarClientes();
+  } catch(e) {
+    toast('Error: ' + e.message, 'err');
+    if (btn) { btn.disabled = false; btn.textContent = 'Anular'; }
+  }
+};
 
 window.abrirModalNuevoPago = function() {
   pagoModo = 'nuevo'; pagoEditId = null; pagoEditData = null;
@@ -1979,6 +2002,7 @@ window.abrirModalNuevoPago = function() {
 window.abrirModalEditarPago = function(id) {
   const p = pagosCache.find(x => x.id === id);
   if (!p) return;
+  if (p.estado === 'anulado') { toast('Este pago está anulado, no se puede editar', 'err'); return; }
   pagoModo = 'editar'; pagoEditId = id; pagoEditData = p;
   $('mp-titulo').textContent = 'Editar pago';
   syncSelectClientes('mp-cliente');

@@ -1,6 +1,6 @@
 # DER - Diagrama Entidad-Relación
 
-Última actualización: 2026-06-29
+Última actualización: 2026-07-05
 
 ```
 ┌─────────────────────────┐
@@ -38,6 +38,8 @@
 │                              │         │     monto            (number) [Gs]  │
 │                              │         │     fecha            (Timestamp)    │
 │                              │         │     observacion      (string)       │
+│                              │         │     estado           (enum) [opt]   │
+│                              │         │       (ausente)|anulado             │
 └──────────────────────────────┘         └──────────────────────────────────────┘
 
 
@@ -106,6 +108,7 @@
 - **[den]** = campo desnormalizado (nombre del cliente copiado para evitar joins)
 - **[Gs]** = montos en Guaraníes / **[US]** = montos en USD
 - `clientes.saldoPendiente` es un campo calculado que se actualiza con `increment()` al crear ventas o pagos
+- **[opt]** `pagos.estado` es opcional; ausente = pago activo. Se setea a `"anulado"` al anular un pago desde la lista, lo que restituye `saldoPendiente` del cliente pero no revierte ventas que ese pago haya marcado como pagadas
 - **compras**, **egresos** e **inventario** son entidades independientes sin FK a ninguna otra colección
 - **expos_ventas** son ventas al contado sin cliente asociado; `totalVentas` y `cantidadVentas` en `expos` se actualizan con `increment()` al crear/editar ventas
 - **[imp]** `origen` es un campo opcional presente solo en registros creados por la importación histórica (`"importacion"`). Permite filtrar/identificar datos importados del spreadsheet 2020–2026
