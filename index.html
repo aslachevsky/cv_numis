@@ -266,6 +266,17 @@
     .btn-anular:active { background: rgba(192,57,43,.2); }
     .btn-anular:disabled { opacity: .45; cursor: not-allowed; }
 
+    .btn-pagar {
+      padding: 5px 10px; border: 1px solid rgba(39,174,96,.4); border-radius: 6px;
+      background: transparent; font-size: 11px; font-weight: 600;
+      color: #5dde8a; cursor: pointer; margin-right: 4px;
+      touch-action: manipulation; user-select: none; -webkit-user-select: none;
+      font-family: 'Poppins', sans-serif; transition: all .15s;
+    }
+    .btn-pagar:hover  { border-color: #5dde8a; background: rgba(39,174,96,.1); }
+    .btn-pagar:active { background: rgba(39,174,96,.2); }
+    .btn-pagar:disabled { opacity: .45; cursor: not-allowed; }
+
     .btn-ver-ventas {
       padding: 5px 10px; border: 1px solid rgba(74,144,217,.4); border-radius: 6px;
       background: transparent; font-size: 11px; font-weight: 600;
@@ -285,6 +296,14 @@
     .vc-desc { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .vc-fecha { font-size: 11px; color: var(--text2); margin-top: 2px; }
     .vc-monto { font-size: 13px; font-weight: 700; color: #e07070; white-space: nowrap; }
+    .btn-vc-pagar {
+      flex-shrink: 0; font-size: 11px; font-weight: 600; padding: 4px 9px;
+      border-radius: 6px; cursor: pointer; white-space: nowrap;
+      background: rgba(39,174,96,.14); color: #5dde8a; border: 1px solid rgba(39,174,96,.3);
+    }
+    .btn-vc-pagar:hover  { background: rgba(39,174,96,.24); }
+    .btn-vc-pagar:active { background: rgba(39,174,96,.34); }
+    .btn-vc-pagar:disabled { opacity: .5; cursor: default; }
     .vc-total {
       display: flex; justify-content: space-between; align-items: center;
       padding: 12px 0 0; margin-top: 4px;
@@ -681,6 +700,7 @@
       </select>
       <button class="btn-nuevo" onclick="abrirModalNuevaVenta()">+ Nueva</button>
       <button class="btn" id="btn-wapp-ventas" style="display:none; font-size:13px; background:rgba(37,211,102,.18); color:#25D366; border:1px solid rgba(37,211,102,.4); padding:6px 12px; border-radius:6px; cursor:pointer; white-space:nowrap" onclick="enviarWhatsAppVentasSec()">📲 WhatsApp</button>
+      <button class="btn" id="btn-copiar-ventas" style="display:none; font-size:13px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2); padding:6px 12px; border-radius:6px; cursor:pointer; white-space:nowrap" onclick="copiarVentasFiltradas()">Copiar texto</button>
       <button class="btn" id="btn-marcar-pagadas" style="display:none; font-size:13px; background:rgba(39,174,96,.18); color:#5dde8a; border:1px solid rgba(39,174,96,.3); padding:6px 12px; border-radius:6px; cursor:pointer; white-space:nowrap" onclick="marcarTodasPagadasVentas()">Marcar todas pagadas</button>
     </div>
     <div class="cl-count" id="v-count"></div>
@@ -1009,7 +1029,7 @@
       <button class="btn btn-cancel" style="font-size:13px" onclick="copiarVentasCliente()">Copiar texto</button>
       <button class="btn btn-primary" style="font-size:13px" onclick="exportarVentasCliente()">Exportar .txt</button>
       <button id="btn-wapp-vc" class="btn" style="font-size:13px; background:rgba(37,211,102,.18); color:#25D366; border:1px solid rgba(37,211,102,.4); display:none" onclick="enviarWhatsAppVentas()">📲 WhatsApp</button>
-      <button class="btn" style="font-size:13px; background:rgba(39,174,96,.18); color:#5dde8a; border:1px solid rgba(39,174,96,.3); margin-left:auto" onclick="marcarTodasPagadas()">Marcar todas pagadas</button>
+      <button id="btn-marcar-todas-vc" class="btn" style="font-size:13px; background:rgba(39,174,96,.18); color:#5dde8a; border:1px solid rgba(39,174,96,.3); margin-left:auto" onclick="marcarTodasPagadas()">Marcar todas pagadas</button>
     </div>
   </div>
 </div>
@@ -1606,6 +1626,7 @@ let ventaModo = 'nuevo';
 let ventaEditId = null;
 let ventaEditData = null;
 let ultimoTipoVenta = 'moneda';
+let ventasFiltradasActual = [];
 
 async function cargarVentas() {
   $('lista-ventas').innerHTML = '<div class="cargando">Cargando...</div>';
@@ -1631,6 +1652,7 @@ window.filtrarVentas = function() {
   });
   if (cnt) cnt.textContent = `${lista.length} venta${lista.length !== 1 ? 's' : ''}`;
   renderTablaVentas(lista);
+  ventasFiltradasActual = lista;
 
   const totalDiv = $('v-total-pendiente');
   if (totalDiv) {
@@ -1662,6 +1684,9 @@ window.filtrarVentas = function() {
     const hayPendientes = clienteId && ventasCache.some(v => v.clienteId === clienteId && v.estado === 'pendiente');
     btnWapp.style.display = (tel && hayPendientes) ? '' : 'none';
   }
+
+  const btnCopiar = $('btn-copiar-ventas');
+  if (btnCopiar) btnCopiar.style.display = (clienteId && lista.length) ? '' : 'none';
 };
 
 function renderTablaVentas(lista) {
@@ -1683,6 +1708,7 @@ function renderTablaVentas(lista) {
           <td class="td-saldo" style="${v.estado==='anulado'?'text-decoration:line-through;opacity:.5':''}">${fmtGs(v.monto)}</td>
           <td><span class="badge badge-${v.estado}">${v.estado}</span></td>
           <td class="td-acc">
+            ${v.estado !== 'anulado' && v.estado !== 'pagado' ? `<button class="btn-pagar" data-vcpagar="${v.id}" onclick="marcarVentaPagada('${v.id}')">Pagar</button>` : ''}
             ${v.estado !== 'anulado' ? `<button class="btn-anular" data-anular="${v.id}" onclick="anularVenta('${v.id}')">Anular</button>` : ''}
             <button class="btn-editar" data-vid="${v.id}">Editar</button>
           </td>
@@ -1765,6 +1791,20 @@ window.guardarModalVenta = async function() {
   if (!clienteId) { toast('Seleccioná un cliente', 'err'); return; }
   if (!fecha)     { toast('La fecha es obligatoria', 'err'); return; }
   if (!monto || monto <= 0) { toast('El monto debe ser mayor a 0', 'err'); return; }
+
+  if (esNuevo) {
+    const desc = $('mv-desc').value.trim().toLowerCase();
+    const dup = ventasCache.find(v =>
+      v.clienteId === clienteId &&
+      v.estado !== 'anulado' &&
+      (v.descripcion || '').trim().toLowerCase() === desc &&
+      v.monto === monto &&
+      v.fecha?.toDate && v.fecha.toDate().toISOString().split('T')[0] === fecha
+    );
+    if (dup && !confirm(`${clienteNombre} ya tiene una venta el ${fecha} con la misma descripción y monto (${fmtGs(monto)}). ¿Guardar de todas formas?`)) {
+      return;
+    }
+  }
 
   const btn = $('btn-mv-guardar');
   btn.disabled = true; btn.textContent = 'Guardando...';
@@ -2653,9 +2693,8 @@ window.finalizarExpo = async function() {
   msg += `Ventas totales: ${fmtGs(totalVentas)}\n`;
   if (costo > 0) msg += `Costo participación: ${fmtGs(costo)}\n`;
   msg += `Resultado: ${fmtGs(resultado)}\n\n`;
-  msg += 'Esto generará:\n';
-  if (costo > 0) msg += `• Un egreso por ${fmtGs(costo)}\n`;
-  if (totalVentas > 0) msg += `• Un pago (ingreso) por ${fmtGs(totalVentas)}\n`;
+  if (costo > 0) msg += `Esto generará un egreso por ${fmtGs(costo)}.\n`;
+  msg += 'Las ventas del evento ya se contabilizan como ventas/cobros al contado en el dashboard.';
 
   if (!confirm(msg)) return;
 
@@ -2671,15 +2710,6 @@ window.finalizarExpo = async function() {
         monto: costo,
         descripcion: `Costo participación: ${expo.nombre}`,
         categoria: 'Expo / Feria'
-      });
-    }
-
-    if (totalVentas > 0) {
-      await addDoc(collection(db,'pagos'), {
-        clienteId: '', clienteNombre: `Expo: ${expo.nombre}`,
-        monto: totalVentas,
-        fecha: fechaHoy,
-        observacion: `Ventas al contado en ${expo.nombre} (${expo.cantidadVentas || 0} ventas)`
       });
     }
 
@@ -2825,17 +2855,19 @@ async function cargarDashboard() {
   const { desde: pDesde, hasta: pHasta } = getPeriodRange(dashPeriod);
 
   try {
-    const [snapV, snapP, snapC, snapE] = await Promise.all([
-      getDocs(query(collection(db,'ventas'),  where('fecha','>=',tsStart), where('fecha','<=',tsEnd))),
-      getDocs(query(collection(db,'pagos'),   where('fecha','>=',tsStart), where('fecha','<=',tsEnd))),
-      getDocs(query(collection(db,'compras'), where('fecha','>=',tsStart), where('fecha','<=',tsEnd))),
-      getDocs(query(collection(db,'egresos'), where('fecha','>=',tsStart), where('fecha','<=',tsEnd))),
+    const [snapV, snapP, snapC, snapE, snapEV] = await Promise.all([
+      getDocs(query(collection(db,'ventas'),       where('fecha','>=',tsStart), where('fecha','<=',tsEnd))),
+      getDocs(query(collection(db,'pagos'),        where('fecha','>=',tsStart), where('fecha','<=',tsEnd))),
+      getDocs(query(collection(db,'compras'),      where('fecha','>=',tsStart), where('fecha','<=',tsEnd))),
+      getDocs(query(collection(db,'egresos'),      where('fecha','>=',tsStart), where('fecha','<=',tsEnd))),
+      getDocs(query(collection(db,'expos_ventas'), where('fecha','>=',tsStart), where('fecha','<=',tsEnd))),
     ]);
 
     const allV = snapV.docs.map(d => d.data());
     const allP = snapP.docs.map(d => d.data());
     const allC = snapC.docs.map(d => d.data());
     const allE = snapE.docs.map(d => d.data());
+    const allEV = snapEV.docs.map(d => d.data());
 
     const inP = x => {
       const s = x.fecha?.seconds || 0;
@@ -2843,16 +2875,18 @@ async function cargarDashboard() {
     };
     const V = allV.filter(inP), P = allP.filter(inP);
     const C = allC.filter(inP), E = allE.filter(inP);
+    const EV = allEV.filter(inP);
 
-    const sumV = V.reduce((s,x) => s + (x.monto||0), 0);
-    const sumP = P.reduce((s,x) => s + (x.monto||0), 0);
+    // Las ventas en ferias son al contado (pago directo): cuentan como venta y como cobro a la vez.
+    const sumV = V.reduce((s,x) => s + (x.monto||0), 0) + EV.reduce((s,x) => s + (x.monto||0), 0);
+    const sumP = P.reduce((s,x) => s + (x.monto||0), 0) + EV.reduce((s,x) => s + (x.monto||0), 0);
     const sumC = C.reduce((s,x) => s + (x.monto||0), 0);
     const sumE = E.reduce((s,x) => s + (x.monto||0), 0);
 
     $('kpi-ventas').textContent   = fmtGs(sumV);
-    $('kpi-ventas-cnt').textContent  = `${V.length} operación${V.length!==1?'es':''}`;
+    $('kpi-ventas-cnt').textContent  = `${V.length + EV.length} operación${(V.length + EV.length)!==1?'es':''}`;
     $('kpi-pagos').textContent    = fmtGs(sumP);
-    $('kpi-pagos-cnt').textContent   = `${P.length} pago${P.length!==1?'s':''}`;
+    $('kpi-pagos-cnt').textContent   = `${P.length + EV.length} pago${(P.length + EV.length)!==1?'s':''}`;
     $('kpi-compras').textContent  = fmtGs(sumC);
     $('kpi-compras-cnt').textContent = `${C.length} operación${C.length!==1?'es':''}`;
     $('kpi-egresos').textContent  = fmtGs(sumE);
@@ -2882,8 +2916,9 @@ async function cargarDashboard() {
       labels.push(MESES[mn]);
       const ts2d = x => x.fecha?.toDate ? x.fecha.toDate() : new Date((x.fecha?.seconds||0)*1000);
       const inMonth = x => { const d2 = ts2d(x); return d2.getMonth() === mn && d2.getFullYear() === yr; };
-      ventasMes.push(allV.filter(inMonth).reduce((s,x) => s+(x.monto||0), 0));
-      pagosMes.push( allP.filter(inMonth).reduce((s,x) => s+(x.monto||0), 0));
+      const evMes = allEV.filter(inMonth).reduce((s,x) => s+(x.monto||0), 0);
+      ventasMes.push(allV.filter(inMonth).reduce((s,x) => s+(x.monto||0), 0) + evMes);
+      pagosMes.push( allP.filter(inMonth).reduce((s,x) => s+(x.monto||0), 0) + evMes);
     }
     renderChartMensual(labels, ventasMes, pagosMes);
 
@@ -3051,6 +3086,7 @@ window.abrirVentasCliente = async function(cid, cnombre, ctel = '') {
           <div class="vc-fecha">${fmtFecha(v.fecha)} <span class="badge badge-${v.estado}" style="margin-left:4px">${v.estado}</span></div>
         </div>
         <div class="vc-monto">${fmtGs(v.monto)}</div>
+        <button class="btn-vc-pagar" data-vcpagar="${v.id}" onclick="marcarVentaPagada('${v.id}')">✓ Pagada</button>
       </div>`).join('');
 
     $('vc-total-bar').innerHTML = `
@@ -3068,24 +3104,63 @@ window.cerrarModalVCSiOverlay = e => { if (e.target === $('modal-vc-overlay')) c
 
 window.marcarTodasPagadas = async function() {
   if (!vcVentas.length) { toast('No hay ventas pendientes', 'err'); return; }
-  const n = vcVentas.length;
+  const ventas = vcVentas;
+  const clienteId = vcClienteId;
+  const clienteNombre = vcClienteNombre;
+  const n = ventas.length;
   if (!confirm(`¿Marcar ${n} venta${n !== 1 ? 's' : ''} como pagada${n !== 1 ? 's' : ''}?`)) return;
 
+  const btn = $('btn-marcar-todas-vc');
+  if (btn) btn.disabled = true;
   try {
-    const total = vcVentas.reduce((s, v) => s + (v.monto || 0), 0);
-    await Promise.all(vcVentas.map(v => updateDoc(doc(db, 'ventas', v.id), { estado: 'pagado' })));
-    if (vcClienteId) {
-      await updateDoc(doc(db, 'clientes', vcClienteId), { saldoPendiente: increment(-total) });
+    const total = ventas.reduce((s, v) => s + (v.monto || 0), 0);
+    await Promise.all(ventas.map(v => updateDoc(doc(db, 'ventas', v.id), { estado: 'pagado' })));
+    if (clienteId) {
+      await updateDoc(doc(db, 'clientes', clienteId), { saldoPendiente: increment(-total) });
       await addDoc(collection(db, 'pagos'), {
-        clienteId: vcClienteId, clienteNombre: vcClienteNombre, monto: total,
+        clienteId: clienteId, clienteNombre: clienteNombre, monto: total,
         fecha: toTs(hoy()), observacion: `Pago generado al marcar ${n} venta${n !== 1 ? 's' : ''} como pagada${n !== 1 ? 's' : ''}`
       });
       await cargarPagos();
     }
     toast(`${n} venta${n !== 1 ? 's' : ''} marcada${n !== 1 ? 's' : ''} como pagadas ✓`);
-    await abrirVentasCliente(vcClienteId, vcClienteNombre);
+    if (vcClienteId === clienteId) await abrirVentasCliente(clienteId, clienteNombre);
   } catch(e) {
     toast('Error: ' + e.message, 'err');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+};
+
+window.marcarVentaPagada = async function(ventaId) {
+  const v = ventasCache.find(x => x.id === ventaId) || vcVentas.find(x => x.id === ventaId);
+  if (!v || v.estado === 'pagado' || v.estado === 'anulado') return;
+  const monto = v.monto || 0;
+  const clienteId = v.clienteId || vcClienteId;
+  const clienteNombre = v.clienteNombre || vcClienteNombre;
+  if (!confirm(`¿Marcar como pagada la venta "${v.descripcion || '—'}" de ${fmtGs(monto)}?`)) return;
+
+  const btns = [...document.querySelectorAll(`[data-vcpagar="${ventaId}"]`)];
+  btns.forEach(b => { b.disabled = true; b.dataset.txt = b.textContent; b.textContent = '...'; });
+  try {
+    await updateDoc(doc(db, 'ventas', ventaId), { estado: 'pagado' });
+    if (clienteId) {
+      await updateDoc(doc(db, 'clientes', clienteId), { saldoPendiente: increment(-monto) });
+      await addDoc(collection(db, 'pagos'), {
+        clienteId, clienteNombre, monto,
+        fecha: toTs(hoy()), observacion: `Pago generado al marcar la venta "${v.descripcion || '—'}" como pagada`
+      });
+      await cargarPagos();
+    }
+    toast('Venta marcada como pagada ✓');
+    await cargarClientes();
+    await cargarVentas();
+    if (vcClienteId && !$('modal-vc-overlay').classList.contains('hidden')) {
+      await abrirVentasCliente(vcClienteId, vcClienteNombre, vcClienteTelefono);
+    }
+  } catch(e) {
+    toast('Error: ' + e.message, 'err');
+    btns.forEach(b => { b.disabled = false; b.textContent = b.dataset.txt || 'Pagar'; });
   }
 };
 
@@ -3130,6 +3205,28 @@ window.enviarWhatsAppVentas = function() {
   const texto = buildTextoVentas(true);
   const url   = `https://wa.me/${vcClienteTelefono}?text=${encodeURIComponent(texto)}`;
   window.open(url, '_blank');
+};
+
+window.copiarVentasFiltradas = async function() {
+  const clienteId = $('v-fil-cliente')?.value || '';
+  if (!clienteId) { toast('Seleccioná un cliente', 'err'); return; }
+  if (!ventasFiltradasActual.length) { toast('Sin ventas para copiar', 'err'); return; }
+
+  const cliente  = clientesCache.find(c => c.id === clienteId);
+  const estadoFil = $('v-fil-estado')?.value || '';
+  const hoyStr   = new Date().toLocaleDateString('es-PY', { day:'2-digit', month:'2-digit', year:'numeric' });
+  const lista    = [...ventasFiltradasActual].sort((a, b) => (a.fecha?.seconds ?? 0) - (b.fecha?.seconds ?? 0));
+  const total    = lista.reduce((s, v) => s + (v.monto || 0), 0);
+  const titulo   = estadoFil ? `VENTAS (${estadoFil.toUpperCase()}) — ${cliente?.nombre || ''}` : `VENTAS — ${cliente?.nombre || ''}`;
+  const items    = lista.map(v => `• ${fmtFecha(v.fecha)}  ${v.descripcion || '—'}  ${fmtGs(v.monto)}${v.estado === 'anulado' ? '  (anulado)' : ''}`).join('\n');
+  const texto    = `${titulo}\nAl ${hoyStr}\n\n${items}\n${'─'.repeat(40)}\nTOTAL: ${fmtGs(total)}`;
+
+  try {
+    await navigator.clipboard.writeText(texto);
+    toast('Copiado al portapapeles ✓');
+  } catch {
+    toast('No se pudo copiar', 'err');
+  }
 };
 
 window.enviarWhatsAppVentasSec = function() {
