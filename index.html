@@ -703,6 +703,21 @@
       <button class="btn" id="btn-copiar-ventas" style="display:none; font-size:13px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2); padding:6px 12px; border-radius:6px; cursor:pointer; white-space:nowrap" onclick="copiarVentasFiltradas()">Copiar texto</button>
       <button class="btn" id="btn-marcar-pagadas" style="display:none; font-size:13px; background:rgba(39,174,96,.18); color:#5dde8a; border:1px solid rgba(39,174,96,.3); padding:6px 12px; border-radius:6px; cursor:pointer; white-space:nowrap" onclick="marcarTodasPagadasVentas()">Marcar todas pagadas</button>
     </div>
+    <div class="cl-toolbar">
+      <input class="cl-search" id="v-fecha-desde" type="date" onchange="filtrarVentas()" title="Fecha desde" style="flex:0 1 140px">
+      <input class="cl-search" id="v-fecha-hasta" type="date" onchange="filtrarVentas()" title="Fecha hasta" style="flex:0 1 140px">
+      <select class="cl-sort" id="v-fil-tipo" onchange="filtrarVentas()" title="Tipo de material">
+        <option value="">Todo tipo</option>
+        <option value="moneda">Moneda</option>
+        <option value="billete">Billete</option>
+        <option value="medalla">Medalla</option>
+        <option value="token">Token</option>
+        <option value="otro">Otro</option>
+      </select>
+      <input class="cl-search" id="v-buscar" placeholder="🔍 Buscar descripción..."
+             oninput="filtrarVentas()" autocomplete="off">
+      <button class="btn" id="btn-limpiar-ventas" style="font-size:13px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2); color:var(--text); padding:6px 12px; border-radius:6px; cursor:pointer; white-space:nowrap" onclick="limpiarFiltrosVentas()">Limpiar</button>
+    </div>
     <div class="cl-count" id="v-count"></div>
     <div id="v-total-pendiente" style="display:none; padding:6px 12px; margin-bottom:6px; font-size:14px; font-weight:600; color:#e07070; background:rgba(224,112,112,.1); border-radius:6px;"></div>
     <div id="lista-ventas"></div>
@@ -1642,17 +1657,48 @@ async function cargarVentas() {
 window.filtrarVentas = function() {
   const clienteId = $('v-fil-cliente')?.value || '';
   const estado    = $('v-fil-estado')?.value ?? 'pendiente';
+  const desde     = $('v-fecha-desde')?.value || '';
+  const hasta     = $('v-fecha-hasta')?.value || '';
+  const tipo      = $('v-fil-tipo')?.value || '';
+  const q         = ($('v-buscar')?.value || '').toLowerCase().trim();
   const el  = $('lista-ventas');
   const cnt = $('v-count');
+
+  const segDesde = desde ? new Date(desde + 'T00:00:00').getTime() / 1000 : null;
+  const segHasta = hasta ? new Date(hasta + 'T23:59:59').getTime() / 1000 : null;
 
   let lista = ventasCache.filter(v => {
     const okCliente = !clienteId || v.clienteId === clienteId;
     const okEstado  = !estado || v.estado === estado;
-    return okCliente && okEstado;
+    const okTipo    = !tipo || v.tipoArticulo === tipo;
+    const okDesc    = !q || (v.descripcion || '').toLowerCase().includes(q);
+    const seg = v.fecha?.seconds ?? null;
+    const okFecha = (segDesde === null && segHasta === null) ||
+                    (seg !== null && (segDesde === null || seg >= segDesde) && (segHasta === null || seg <= segHasta));
+    return okCliente && okEstado && okTipo && okDesc && okFecha;
   });
-  if (cnt) cnt.textContent = `${lista.length} venta${lista.length !== 1 ? 's' : ''}`;
+  if (cnt) {
+    const total = lista.filter(v => v.estado !== 'anulado').reduce((s, v) => s + (v.monto || 0), 0);
+    cnt.textContent = `${lista.length} venta${lista.length !== 1 ? 's' : ''} — ${fmtGs(total)}`;
+  }
   renderTablaVentas(lista);
   ventasFiltradasActual = lista;
+
+  // Si la búsqueda no devuelve nada pero hay un estado filtrado, avisar que puede estar ocultando resultados
+  if (!lista.length && estado && (q || tipo || desde || hasta)) {
+    const otros = ventasCache.filter(v => {
+      const okCliente = !clienteId || v.clienteId === clienteId;
+      const okTipo    = !tipo || v.tipoArticulo === tipo;
+      const okDesc    = !q || (v.descripcion || '').toLowerCase().includes(q);
+      const seg = v.fecha?.seconds ?? null;
+      const okFecha = (segDesde === null && segHasta === null) ||
+                      (seg !== null && (segDesde === null || seg >= segDesde) && (segHasta === null || seg <= segHasta));
+      return okCliente && okTipo && okDesc && okFecha;
+    }).length;
+    if (otros) {
+      el.innerHTML = `<div class="empty">Sin resultados en estado "${estado}".<br>Hay ${otros} venta${otros !== 1 ? 's' : ''} en otros estados — cambiá el filtro de estado a "Todos".</div>`;
+    }
+  }
 
   const totalDiv = $('v-total-pendiente');
   if (totalDiv) {
@@ -1687,6 +1733,14 @@ window.filtrarVentas = function() {
 
   const btnCopiar = $('btn-copiar-ventas');
   if (btnCopiar) btnCopiar.style.display = (clienteId && lista.length) ? '' : 'none';
+};
+
+window.limpiarFiltrosVentas = function() {
+  if ($('v-fecha-desde')) $('v-fecha-desde').value = '';
+  if ($('v-fecha-hasta')) $('v-fecha-hasta').value = '';
+  if ($('v-fil-tipo'))    $('v-fil-tipo').value    = '';
+  if ($('v-buscar'))      $('v-buscar').value      = '';
+  filtrarVentas();
 };
 
 function renderTablaVentas(lista) {

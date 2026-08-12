@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(node -e \"const d = new Date\\(\\); console.log\\('Local:', d.toString\\(\\)\\); console.log\\('ISO \\(UTC\\):', d.toISOString\\(\\)\\); console.log\\('Local date via toLocaleDateString es-PY:', d.toLocaleDateString\\('es-PY'\\)\\); console.log\\('TZ offset \\(min\\):', d.getTimezoneOffset\\(\\)\\);\")",
-      "Bash(git log *)"
+      "Bash(git log *)",
+      "Bash(curl -s \"https://firestore.googleapis.com/v1/projects/helio-produce/databases/andyslapry/documents/admins?key=AIzaSyBOB3EZQQ8jKOyieOqt5_EebUn8ITknAfY&pageSize=1\")"
     ]
   }
 }
